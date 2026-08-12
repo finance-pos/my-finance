@@ -62,7 +62,45 @@
 
     const WALLETS = ['លុយសុទ្ធ (Cash)', 'ABA Bank', 'ACLEDA Bank', 'ផ្សេងៗ'];
 
+    const SPLASH_SLIDES = [
+      {
+        title: "គ្រប់គ្រងហិរញ្ញវត្ថុងាយស្រួល",
+        description: "តាមដានចំណូល ចំណាយប្រចាំថ្ងៃរបស់អ្នកបានយ៉ាងឆាប់រហ័ស[cite: 3] និងមានសុវត្ថិភាព។",
+        image: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        title: "វិភាគទិន្នន័យច្បាស់លាស់",
+        description: "ដឹងពីអត្រាការចំណាយតាមប្រភេទនីមួយៗតាមរយៈក្រាហ្វិក[cite: 3] ដ៏ស្រស់ស្អាត។",
+        image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        title: "សុវត្ថិភាពខ្ពស់ និងរហ័ស",
+        description: "ទិន្នន័យត្រូវបានរក្សាទុកដោយសុវត្ថិភាព និងមានប្រព័ន្ធការពារកូដ PIN[cite: 3] យ៉ាងរឹងមាំ។",
+        image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=600&q=80"
+      }
+    ];
+
     function App() {
+      const [showSplash, setShowSplash] = useState(true);
+      const [currentSlide, setCurrentSlide] = useState(0);
+
+      // មុខងារស្លាយស្វ័យប្រវត្តិ (Auto-play ក្នុងរយៈពេល 4 វិនាទី)
+      useEffect(() => {
+        if (!showSplash) return;
+        
+        const timer = setInterval(() => {
+          setCurrentSlide((prev) => {
+            if (prev < SPLASH_SLIDES.length - 1) {
+              return prev + 1;
+            } else {
+              return 0;
+            }
+          });
+        }, 4000);
+
+        return () => clearInterval(timer);
+      }, [showSplash]);
+
       // PIN Security States
       const [savedPin, setSavedPin] = useState(() => localStorage.getItem('app_pin') || '');
       const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem('app_pin'));
@@ -97,7 +135,6 @@
       const chartRef = useRef(null);
       const chartInstance = useRef(null);
 
-      // Handle Dark Mode Toggle
       useEffect(() => {
         if (darkMode) {
           document.documentElement.classList.add('dark');
@@ -107,7 +144,6 @@
         localStorage.setItem('dark_mode', darkMode);
       }, [darkMode]);
 
-      // Fetch Data
       const fetchData = async () => {
         if (!GOOGLE_SHEET_URL || GOOGLE_SHEET_URL.includes("YOUR_GOOGLE")) return;
         setSyncing(true);
@@ -124,10 +160,9 @@
       useEffect(() => { fetchData(); }, []);
 
       useEffect(() => {
-        if (window.lucide) window.lucide.createIcons();
-      }, [transactions, showForm, activeTab, currency, selectedCategoryFilter, timeFilter, syncing, isLocked, darkMode]);
+        if (window.lucide && !showSplash) window.lucide.createIcons();
+      }, [transactions, showForm, activeTab, currency, selectedCategoryFilter, timeFilter, syncing, isLocked, darkMode, showSplash]);
 
-      // PIN Lock Verification
       const handleUnlock = (e) => {
         e.preventDefault();
         if (pinInput === savedPin) {
@@ -150,7 +185,6 @@
         }
       };
 
-      // Add Transaction
       const handleAddTransaction = async (e) => {
         e.preventDefault();
         if (!title || !amount) return;
@@ -231,7 +265,6 @@
         return '$' + valInUSD.toFixed(2);
       };
 
-      // Export CSV
       const exportToCSV = () => {
         let csv = "ID,Title,Amount(USD),Type,Category,Wallet,Date\n";
         dateFilteredTransactions.forEach(t => {
@@ -245,12 +278,10 @@
         a.click();
       };
 
-      // Export PDF (Print Mode)
       const exportToPDF = () => {
         window.print();
       };
 
-      // Analytics Chart
       useEffect(() => {
         if (activeTab !== 'analytics' || !chartRef.current) return;
         const expenses = dateFilteredTransactions.filter(t => t.type === 'expense');
@@ -284,7 +315,66 @@
       const isNearBudget = totalExpenseUSD >= (budgetLimit * 0.8) && !isOverBudget;
       const budgetPercent = Math.min((totalExpenseUSD / budgetLimit) * 100, 100);
 
-      // PIN Screen Component
+      // កែសម្រួល Splash Screen UI ឱ្យមានលក្ខណៈស្តង់ដា និងទាក់ទាញខ្លាំងជាងមុន[cite: 3]
+      if (showSplash) {
+        return (
+          <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white flex flex-col justify-between p-6 z-50 max-w-md mx-auto">
+            {/* Top Bar with Skip */}
+            <div className="flex justify-between items-center pt-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-pureBlue flex items-center justify-center shadow-lg shadow-blue-600/30">
+                  <i data-lucide="wallet" className="w-4 h-4 text-white"></i>
+                </div>
+                <span className="text-xs font-bold tracking-wider text-slate-300">Finance Pro</span>
+              </div>
+              <button 
+                onClick={() => setShowSplash(false)}
+                className="text-slate-300 hover:text-white text-xs font-medium px-4 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition border border-white/10"
+              >
+                រំលង (Skip)
+              </button>
+            </div>
+
+            {/* Main Content Card */}
+            <div className="flex flex-col items-center text-center space-y-6 my-auto">
+              <div className="w-full h-72 rounded-3xl overflow-hidden shadow-2xl relative border border-white/10 bg-slate-800 group">
+                <img 
+                  src={SPLASH_SLIDES[currentSlide].image} 
+                  alt="Splash" 
+                  className="w-full h-full object-cover transition-all duration-700 ease-in-out transform hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+              </div>
+
+              <div className="space-y-3 px-2">
+                <h2 className="text-xl font-bold text-blue-400 tracking-wide">{SPLASH_SLIDES[currentSlide].title}</h2>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-xs mx-auto">{SPLASH_SLIDES[currentSlide].description}</p>
+              </div>
+
+              {/* Modern Dots Indicator */}
+              <div className="flex gap-2 pt-2">
+                {SPLASH_SLIDES.map((_, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`h-2 rounded-full transition-all duration-500 ${currentSlide === idx ? 'w-8 bg-blue-500' : 'w-2 bg-slate-700'}`}
+                  ></div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bottom Button */}
+            <div className="pb-4">
+              <button 
+                onClick={() => setShowSplash(false)}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 py-3.5 rounded-2xl font-bold text-xs shadow-lg shadow-blue-600/30 transition transform active:scale-95"
+              >
+                ចាប់ផ្តើមប្រើប្រាស់
+              </button>
+            </div>
+          </div>
+        );
+      }
+
       if (isLocked) {
         return (
           <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900 text-white">
@@ -312,7 +402,6 @@
         <div className="w-full max-w-md mx-auto min-h-screen flex flex-col justify-between">
           <div className="p-3 space-y-3">
 
-            {/* Smart Alerts */}
             {isOverBudget && (
               <div className="bg-rose-500 text-white text-xs p-3 rounded-2xl flex items-center gap-2 shadow-md animate-pulse">
                 <i data-lucide="alert-triangle" className="w-5 h-5 flex-shrink-0"></i>
@@ -537,7 +626,6 @@
 
             {activeTab === 'tools' && (
               <div className="space-y-3">
-                {/* Dark Mode Toggle */}
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <i data-lucide={darkMode ? "moon" : "sun"} className="w-4 h-4 text-pureBlue"></i>
@@ -551,13 +639,12 @@
                   </button>
                 </div>
 
-                {/* PIN Security */}
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
                   <div className="flex items-center gap-2">
                     <i data-lucide="shield-check" className="w-4 h-4 text-pureBlue"></i>
                     <span className="text-xs font-bold">សុវត្ថិភាពលេខកូដ (PIN Lock)</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">ការពារការចូលមើលទិន្នន័យដោយគ្មានការអនុញ្ញាត</p>
+                  <p className="text-[11px] text-slate-400">ការពារការចូលមើលទិន្នន័យដោយគ្មានการអនុញ្ញាត</p>
                   <div className="flex gap-2 pt-1">
                     <input 
                       type="password" maxLength="4" placeholder="កូដ ៤ ខ្ទង់" 
@@ -581,7 +668,6 @@
                   </div>
                 </div>
 
-                {/* Currency Exchange */}
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
                   <span className="text-xs font-bold">រូបិយប័ណ្ណបង្ហាញ</span>
                   <button 
@@ -592,7 +678,6 @@
                   </button>
                 </div>
 
-                {/* Export Data */}
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
                   <h3 className="text-xs font-bold mb-2">ទាញយករបាយការណ៍ (Export)</h3>
                   <div className="grid grid-cols-2 gap-2">
@@ -609,7 +694,6 @@
 
           </div>
 
-          {/* Navigation Bar */}
           <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-6 py-2 flex justify-between items-center shadow-lg z-50">
             <button 
               onClick={() => setActiveTab('home')} 
