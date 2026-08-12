@@ -45,7 +45,6 @@
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
-    /* Safe Area padding សម្រាប់ការពារការបាត់គែមលើទូរស័ព្ទទំនើបៗ */
     body {
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
@@ -75,17 +74,17 @@
     const SPLASH_SLIDES = [
       {
         title: "គ្រប់គ្រងហិរញ្ញវត្ថុងាយស្រួល",
-        description: "តាមដានចំណូល ចំណាយប្រចាំថ្ងៃរបស់អ្នកបានយ៉ាងឆាប់រហ័ស[cite: 3] និងមានសុវត្ថិភាព។",
+        description: "តាមដានចំណូល ចំណាយប្រចាំថ្ងៃរបស់អ្នកបានយ៉ាងឆាប់រហ័ស និងមានសុវត្ថិភាព។",
         image: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80"
       },
       {
         title: "វិភាគទិន្នន័យច្បាស់លាស់",
-        description: "ដឹងពីអត្រាការចំណាយតាមប្រភេទនីមួយៗតាមរយៈក្រាហ្វិក[cite: 3] ដ៏ស្រស់ស្អាត។",
+        description: "ដឹងពីអត្រាការចំណាយតាមប្រភេទនីមួយៗតាមរយៈក្រាហ្វិក ដ៏ស្រស់ស្អាត។",
         image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80"
       },
       {
         title: "សុវត្ថិភាពខ្ពស់ និងរហ័ស",
-        description: "ទិន្នន័យត្រូវបានរក្សាទុកដោយសុវត្ថិភាព និងមានប្រព័ន្ធការពារកូដ PIN[cite: 3] យ៉ាងរឹងមាំ។",
+        description: "ទិន្នន័យត្រូវបានរក្សាទុកដោយសុវត្ថិភាព និងមានប្រព័ន្ធការពារកូដ PIN យ៉ាងរឹងមាំ។",
         image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=600&q=80"
       }
     ];
@@ -96,17 +95,9 @@
 
       useEffect(() => {
         if (!showSplash) return;
-        
         const timer = setInterval(() => {
-          setCurrentSlide((prev) => {
-            if (prev < SPLASH_SLIDES.length - 1) {
-              return prev + 1;
-            } else {
-              return 0;
-            }
-          });
+          setCurrentSlide((prev) => (prev < SPLASH_SLIDES.length - 1 ? prev + 1 : 0));
         }, 4000);
-
         return () => clearInterval(timer);
       }, [showSplash]);
 
@@ -114,9 +105,11 @@
       const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem('app_pin'));
       const [pinInput, setPinInput] = useState('');
       const [pinError, setPinError] = useState('');
+      
+      // Biometric State
+      const [isBiometricEnabled, setIsBiometricEnabled] = useState(() => localStorage.getItem('biometric_enabled') === 'true');
 
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem('dark_mode') === 'true');
-
       const [transactions, setTransactions] = useState([]);
       const [loading, setLoading] = useState(false);
       const [syncing, setSyncing] = useState(false);
@@ -166,7 +159,7 @@
 
       useEffect(() => {
         if (window.lucide && !showSplash) window.lucide.createIcons();
-      }, [transactions, showForm, activeTab, currency, selectedCategoryFilter, timeFilter, syncing, isLocked, darkMode, showSplash]);
+      }, [transactions, showForm, activeTab, currency, selectedCategoryFilter, timeFilter, syncing, isLocked, darkMode, showSplash, isBiometricEnabled]);
 
       const handleUnlock = (e) => {
         e.preventDefault();
@@ -177,6 +170,29 @@
         } else {
           setPinError('លេខកូដមិនត្រឹមត្រូវឡើយ!');
           setPinInput('');
+        }
+      };
+
+      // Biometric Auth Handler
+      const handleBiometricAuth = async () => {
+        try {
+          const challenge = new Uint8Array(32);
+          window.crypto.getRandomValues(challenge);
+
+          const assertion = await navigator.credentials.get({
+            publicKey: {
+              challenge: challenge,
+              timeout: 60000,
+              userVerification: "required"
+            }
+          });
+
+          if (assertion) {
+            setIsLocked(false);
+            setPinError('');
+          }
+        } catch (err) {
+          setPinError('ការស្កែនមុខ/ក្រយៅដៃមិនជោគជ័យ');
         }
       };
 
@@ -393,6 +409,17 @@
                   ដោះកូដ
                 </button>
               </form>
+
+              {/* ប៊ូតុងស្កែនមុខ/ក្រយៅដៃនៅកន្លែង PIN (បើកទាល់តែ User បានបើកកំណត់រួច) */}
+              {isBiometricEnabled && (
+                <button 
+                  type="button"
+                  onClick={handleBiometricAuth}
+                  className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 py-2.5 rounded-xl font-bold text-xs text-white transition mt-2 border border-slate-600"
+                >
+                  <i data-lucide="scan-face" className="w-4 h-4 text-blue-400"></i> ស្កែនមុខ / ក្រយៅដៃ
+                </button>
+              )}
             </div>
           </div>
         );
@@ -666,6 +693,24 @@
                       </button>
                     )}
                   </div>
+                </div>
+
+                {/* មុខងារបើក/បិទ ស្កែនមុខ/ក្រយៅដៃ ក្នុង Tab ឧបករណ៍ (Tools) */}
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <i data-lucide="scan-face" className="w-4 h-4 text-pureBlue"></i>
+                    <span className="text-xs font-bold">ស្កែនមុខ / ក្រយៅដៃ (Biometric)</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const newState = !isBiometricEnabled;
+                      setIsBiometricEnabled(newState);
+                      localStorage.setItem('biometric_enabled', newState);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${isBiometricEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
+                  >
+                    {isBiometricEnabled ? 'បើក' : 'បិទ'}
+                  </button>
                 </div>
 
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
