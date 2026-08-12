@@ -8,7 +8,7 @@
   <!-- PWA Web App Manifest -->
   <link rel="manifest" href="manifest.json">
 
-  <!-- Mobile & iOS Home Screen Icons (ភ្ជាប់ទៅរូបទី២) -->
+  <!-- Mobile & iOS Home Screen Icons -->
   <link rel="icon" type="image/png" href="iconfinances.png">
   <link rel="apple-touch-icon" href="iconfinances.png">
   
@@ -222,4 +222,279 @@
       const finalDisplayTransactions = dateFilteredTransactions.filter(t => {
         const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) || 
                               t.category.toLowerCase().includes(search.toLowerCase());
-        const matchesCategory = selectedCategoryFilter === '
+        const matchesCategory = selectedCategoryFilter === 'ទាំងអស់' || t.category === selectedCategoryFilter;
+        return matchesSearch && matchesCategory;
+      });
+
+      const isOverBudget = totalExpenseUSD > budgetLimit;
+      const budgetPercent = Math.min((totalExpenseUSD / budgetLimit) * 100, 100);
+
+      return (
+        <div className="w-full max-w-md mx-auto min-h-screen flex flex-col justify-between">
+          <div className="p-3 space-y-3">
+
+            {activeTab === 'home' && (
+              <div className="space-y-3">
+                <div className="bg-pureBlue text-white rounded-3xl p-5 shadow-lg space-y-4 relative">
+                  <div className="flex justify-between items-center">
+                    <select 
+                      value={timeFilter} 
+                      onChange={(e) => setTimeFilter(e.target.value)}
+                      className="bg-white/15 text-white border border-white/20 rounded-xl px-2.5 py-1 text-[11px] font-semibold outline-none backdrop-blur-md cursor-pointer hover:bg-white/25 transition"
+                    >
+                      <option value="thisMonth" className="text-slate-800">📅 ខែនេះ</option>
+                      <option value="lastMonth" className="text-slate-800">⏮️ ខែមុន</option>
+                      <option value="all" className="text-slate-800">🌐 ទាំងអស់</option>
+                    </select>
+
+                    <button onClick={fetchData} className="text-blue-200 hover:text-white p-1 transition" title="Sync ទិន្នន័យ">
+                      <i data-lucide="refresh-cw" className={`w-4 h-4 ${syncing ? 'animate-spin text-white' : ''}`}></i>
+                    </button>
+                  </div>
+
+                  <div className="text-center space-y-1 pt-1">
+                    <span className="text-[11px] text-blue-200 font-light">
+                      {timeFilter === 'thisMonth' ? 'ប្រាក់នៅសល់ (ខែនេះ)' : timeFilter === 'lastMonth' ? 'ប្រាក់នៅសល់ (ខែមុន)' : 'ប្រាក់នៅសល់សរុប'}
+                    </span>
+                    <div className="text-3xl font-extrabold">{formatMoney(balanceUSD)}</div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-blue-400/30">
+                    <div className="bg-white/10 p-2.5 rounded-2xl flex items-center gap-2">
+                      <i data-lucide="arrow-up-circle" className="w-5 h-5 text-emerald-300"></i>
+                      <div>
+                        <div className="text-[10px] text-blue-100">ចំណូល</div>
+                        <div className="text-xs font-bold text-emerald-300">+{formatMoney(totalIncomeUSD)}</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/10 p-2.5 rounded-2xl flex items-center gap-2">
+                      <i data-lucide="arrow-down-circle" className="w-5 h-5 text-rose-300"></i>
+                      <div>
+                        <div className="text-[10px] text-blue-100">ចំណាយ</div>
+                        <div className="text-xs font-bold text-rose-300">-{formatMoney(totalExpenseUSD)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setShowForm(!showForm)}
+                  className="w-full bg-pureBlue text-white py-3 rounded-2xl text-xs font-semibold hover:bg-blue-800 transition shadow flex justify-center items-center gap-2"
+                >
+                  <i data-lucide={showForm ? "x-circle" : "plus-circle"} className="w-4 h-4"></i>
+                  {showForm ? 'បិទទម្រង់' : 'បន្ថែមចំណូល / ចំណាយ'}
+                </button>
+
+                {showForm && (
+                  <form onSubmit={handleAddTransaction} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 text-xs">
+                    <div>
+                      <label className="block text-slate-600 mb-1">បរិយាយ</label>
+                      <input 
+                        type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                        placeholder="ឧ. ទិញបាយ, ប្រាក់ខែ" className="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:border-pureBlue" required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-slate-600 mb-1">ចំនួនទឹកប្រាក់</label>
+                        <input 
+                          type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
+                          placeholder="0.00" className="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:border-pureBlue" required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 mb-1">រូបិយប័ណ្ណ</label>
+                        <select value={formCurrency} onChange={(e) => setFormCurrency(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none">
+                          <option value="USD">$ USD</option>
+                          <option value="KHR">៛ KHR</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-slate-600 mb-1">ប្រភេទ</label>
+                        <select value={type} onChange={(e) => setType(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
+                          <option value="expense">ចំណាយ (-)</option>
+                          <option value="income">ចំណូល (+)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 mb-1">ជំពូកចំណាយ</label>
+                        <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl outline-none bg-white">
+                          {CATEGORIES.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    <button type="submit" disabled={loading} className="w-full bg-pureBlue text-white py-2.5 rounded-xl font-medium text-xs mt-2">
+                      {loading ? 'កំពុងរក្សាទុក...' : 'រក្សាទុក'}
+                    </button>
+                  </form>
+                )}
+
+                <div className="flex gap-2">
+                  <input 
+                    type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+                    placeholder="ស្វែងរកប្រវត្តិ..." 
+                    className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs outline-none shadow-sm"
+                  />
+                  <select 
+                    value={selectedCategoryFilter} onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                    className="p-2 bg-white border border-slate-200 rounded-xl text-xs outline-none shadow-sm text-slate-700"
+                  >
+                    <option value="ទាំងអស់">ទាំងអស់</option>
+                    {CATEGORIES.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
+                  </select>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="p-3 bg-slate-50 border-b border-slate-100 font-bold text-xs text-slate-700 flex justify-between">
+                    <span>ប្រវត្តិប្រតិបត្តិការ</span>
+                    <span className="text-[10px] text-slate-400 font-normal">({finalDisplayTransactions.length} ប្រតិបត្តិការ)</span>
+                  </div>
+                  <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                    {finalDisplayTransactions.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs">មិនមានទិន្នន័យក្នុងកំឡុងពេលនេះឡើយ</div>
+                    ) : (
+                      finalDisplayTransactions.map((t) => (
+                        <div key={t.id} className="p-3 flex justify-between items-center hover:bg-slate-50 transition">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`p-1.5 rounded-lg ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                              <i data-lucide={t.type === 'income' ? 'arrow-up-circle' : 'arrow-down-circle'} className="w-4 h-4"></i>
+                            </div>
+                            <div>
+                              <div className="font-semibold text-slate-800 text-xs">{t.title}</div>
+                              <div className="text-[10px] text-slate-400">{t.category} • {t.date}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold text-xs ${t.type === 'income' ? 'text-emerald-600' : 'text-slate-800'}`}>
+                              {t.type === 'income' ? '+' : '-'}{formatMoney(t.amount)}
+                            </span>
+                            <button onClick={() => handleDelete(t.id)} className="text-slate-300 hover:text-rose-600 transition">
+                              <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {activeTab === 'analytics' && (
+              <div className="space-y-3">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-bold text-slate-800">ការបែងចែកចំណាយតាមប្រភេទ</h3>
+                    <span className="text-[10px] bg-blue-50 text-pureBlue font-bold px-2 py-0.5 rounded-lg">
+                      {timeFilter === 'thisMonth' ? 'ខែនេះ' : timeFilter === 'lastMonth' ? 'ខែមុន' : 'ទាំងអស់'}
+                    </span>
+                  </div>
+                  <div className="h-52 relative">
+                    <canvas ref={chartRef}></canvas>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-700">ពិដានថវិកាប្រចាំខែ</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input 
+                      type="number" value={tempBudget} onChange={(e) => setTempBudget(e.target.value)}
+                      className="p-2 border border-slate-200 rounded-xl text-xs w-full outline-none" placeholder="កំណត់ថវិកា ($)"
+                    />
+                    <button 
+                      onClick={() => { setBudgetLimit(parseFloat(tempBudget)); localStorage.setItem('budgetLimit', tempBudget); }}
+                      className="bg-pureBlue text-white px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap"
+                    >
+                      រក្សាទុក
+                    </button>
+                  </div>
+
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div className={`h-full ${isOverBudget ? 'bg-rose-600' : 'bg-pureBlue'}`} style={{ width: `${budgetPercent}%` }}></div>
+                  </div>
+
+                  <div className="flex justify-between text-[11px] text-slate-500">
+                    <span>បានចំណាយ៖ {formatMoney(totalExpenseUSD)}</span>
+                    <span>ពិដាន៖ ${budgetLimit}</span>
+                  </div>
+
+                  {isOverBudget && (
+                    <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs p-2 rounded-xl flex items-center gap-1.5">
+                      <i data-lucide="alert-triangle" className="w-4 h-4"></i> ការចំណាយរបស់អ្នកបានលើសពិដានថវិកាហើយ!
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'tools' && (
+              <div className="space-y-3">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <h3 className="text-xs font-bold text-slate-800 mb-2">រូបិយប័ណ្ណបង្ហាញ</h3>
+                  <div className="flex justify-between items-center p-2 bg-slate-50 rounded-xl">
+                    <span className="text-xs text-slate-600">ប្តូររូបិយប័ណ្ណ</span>
+                    <button 
+                      onClick={() => setCurrency(currency === 'USD' ? 'KHR' : 'USD')}
+                      className="bg-pureBlue text-white font-bold px-3 py-1.5 rounded-xl text-xs"
+                    >
+                      {currency === 'USD' ? 'USD ($)' : 'KHR (៛)'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <h3 className="text-xs font-bold text-slate-800 mb-2">ទាញយកទិន្នន័យ (Export)</h3>
+                  <button onClick={exportToCSV} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white p-2.5 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition">
+                    <i data-lucide="download" className="w-4 h-4"></i> Export CSV (Excel)
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-slate-200 px-6 py-2 flex justify-between items-center shadow-lg z-50">
+            <button 
+              onClick={() => setActiveTab('home')} 
+              className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${activeTab === 'home' ? 'text-pureBlue' : 'text-slate-400'}`}
+            >
+              <i data-lucide="home" className="w-5 h-5"></i>
+              <span>ទំព័រដើម</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('analytics')} 
+              className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${activeTab === 'analytics' ? 'text-pureBlue' : 'text-slate-400'}`}
+            >
+              <i data-lucide="pie-chart" className="w-5 h-5"></i>
+              <span>ការវិភាគ</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('tools')} 
+              className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${activeTab === 'tools' ? 'text-pureBlue' : 'text-slate-400'}`}
+            >
+              <i data-lucide="sliders" className="w-5 h-5"></i>
+              <span>ឧបករណ៍</span>
+            </button>
+          </div>
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App/>);
+  </script>
+</body>
+</html>
