@@ -3,12 +3,12 @@
   "name": "កម្មវិធីគ្រប់គ្រងហិរញ្ញវត្ថុ",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "iconfinances.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "icon.png",
+      "src": "iconfinances.png",
       "type": "image/png",
       "sizes": "512x512"
     }
