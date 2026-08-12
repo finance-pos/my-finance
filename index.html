@@ -2,7 +2,7 @@
 <html lang="km">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>កម្មវិធីគ្រប់គ្រងហិរញ្ញវត្ថុ Pro</title>
 
   <!-- PWA Web App Manifest -->
@@ -43,6 +43,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Safe Area padding សម្រាប់ការពារការបាត់គែមលើទូរស័ព្ទទំនើបៗ */
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+  </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900 font-sans min-h-screen text-slate-800 dark:text-slate-100 pb-20 transition-colors duration-200">
 
@@ -65,17 +75,17 @@
     const SPLASH_SLIDES = [
       {
         title: "គ្រប់គ្រងហិរញ្ញវត្ថុងាយស្រួល",
-        description: "តាមដានចំណូល ចំណាយប្រចាំថ្ងៃរបស់អ្នកបានយ៉ាងឆាប់រហ័សនិងមានសុវត្ថិភាព។",
+        description: "តាមដានចំណូល ចំណាយប្រចាំថ្ងៃរបស់អ្នកបានយ៉ាងឆាប់រហ័ស[cite: 3] និងមានសុវត្ថិភាព។",
         image: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80"
       },
       {
         title: "វិភាគទិន្នន័យច្បាស់លាស់",
-        description: "ដឹងពីអត្រាការចំណាយតាមប្រភេទនីមួយៗតាមរយៈក្រាហ្វិកដ៏ស្រស់ស្អាត។",
+        description: "ដឹងពីអត្រាការចំណាយតាមប្រភេទនីមួយៗតាមរយៈក្រាហ្វិក[cite: 3] ដ៏ស្រស់ស្អាត។",
         image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80"
       },
       {
         title: "សុវត្ថិភាពខ្ពស់ និងរហ័ស",
-        description: "ទិន្នន័យត្រូវបានរក្សាទុកដោយសុវត្ថិភាព និងមានប្រព័ន្ធការពារកូដ [PIN] យ៉ាងរឹងមាំ។",
+        description: "ទិន្នន័យត្រូវបានរក្សាទុកដោយសុវត្ថិភាព និងមានប្រព័ន្ធការពារកូដ PIN[cite: 3] យ៉ាងរឹងមាំ។",
         image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=600&q=80"
       }
     ];
@@ -84,7 +94,6 @@
       const [showSplash, setShowSplash] = useState(true);
       const [currentSlide, setCurrentSlide] = useState(0);
 
-      // មុខងារស្លាយស្វ័យប្រវត្តិ (Auto-play ក្នុងរយៈពេល 4 វិនាទី)
       useEffect(() => {
         if (!showSplash) return;
         
@@ -101,16 +110,13 @@
         return () => clearInterval(timer);
       }, [showSplash]);
 
-      // PIN Security States
       const [savedPin, setSavedPin] = useState(() => localStorage.getItem('app_pin') || '');
       const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem('app_pin'));
       const [pinInput, setPinInput] = useState('');
       const [pinError, setPinError] = useState('');
 
-      // Theme State
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem('dark_mode') === 'true');
 
-      // App States
       const [transactions, setTransactions] = useState([]);
       const [loading, setLoading] = useState(false);
       const [syncing, setSyncing] = useState(false);
@@ -123,7 +129,6 @@
       const [budgetLimit, setBudgetLimit] = useState(() => parseFloat(localStorage.getItem('budgetLimit')) || 500);
       const [tempBudget, setTempBudget] = useState(budgetLimit);
 
-      // Form States
       const [title, setTitle] = useState('');
       const [amount, setAmount] = useState('');
       const [formCurrency, setFormCurrency] = useState('USD');
@@ -315,11 +320,9 @@
       const isNearBudget = totalExpenseUSD >= (budgetLimit * 0.8) && !isOverBudget;
       const budgetPercent = Math.min((totalExpenseUSD / budgetLimit) * 100, 100);
 
-      // កែសម្រួល Splash Screen UI ឱ្យមានលក្ខណៈស្តង់ដា និងទាក់ទាញខ្លាំងជាងមុន[cite: 3]
       if (showSplash) {
         return (
           <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white flex flex-col justify-between p-6 z-50 max-w-md mx-auto">
-            {/* Top Bar with Skip */}
             <div className="flex justify-between items-center pt-2">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-pureBlue flex items-center justify-center shadow-lg shadow-blue-600/30">
@@ -335,7 +338,6 @@
               </button>
             </div>
 
-            {/* Main Content Card */}
             <div className="flex flex-col items-center text-center space-y-6 my-auto">
               <div className="w-full h-72 rounded-3xl overflow-hidden shadow-2xl relative border border-white/10 bg-slate-800 group">
                 <img 
@@ -351,7 +353,6 @@
                 <p className="text-xs text-slate-300 leading-relaxed max-w-xs mx-auto">{SPLASH_SLIDES[currentSlide].description}</p>
               </div>
 
-              {/* Modern Dots Indicator */}
               <div className="flex gap-2 pt-2">
                 {SPLASH_SLIDES.map((_, idx) => (
                   <div 
@@ -362,7 +363,6 @@
               </div>
             </div>
 
-            {/* Bottom Button */}
             <div className="pb-4">
               <button 
                 onClick={() => setShowSplash(false)}
@@ -545,8 +545,8 @@
 
                 <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
                   <div className="p-3 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 font-bold text-xs flex justify-between">
-                    <span>ប្រវត្តិប្រតិបត្តិការ</span>
-                    <span className="text-[10px] text-slate-400 font-normal">({finalDisplayTransactions.length} ប្រតិបត្តិការ)</span>
+                    <span>ប្រវត្តិប្រតិបត្តិการ</span>
+                    <span className="text-[10px] text-slate-400 font-normal">({finalDisplayTransactions.length} ប្រតិបត្តិการ)</span>
                   </div>
                   <div className="divide-y divide-slate-100 dark:divide-slate-700 max-h-96 overflow-y-auto">
                     {finalDisplayTransactions.length === 0 ? (
@@ -644,7 +644,7 @@
                     <i data-lucide="shield-check" className="w-4 h-4 text-pureBlue"></i>
                     <span className="text-xs font-bold">សុវត្ថិភាពលេខកូដ (PIN Lock)</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">ការពារការចូលមើលទិន្នន័យដោយគ្មានการអនុញ្ញាត</p>
+                  <p className="text-[11px] text-slate-400">ការពារការចូលមើលទិន្នន័យដោយគ្មានការអនុញ្ញាត</p>
                   <div className="flex gap-2 pt-1">
                     <input 
                       type="password" maxLength="4" placeholder="កូដ ៤ ខ្ទង់" 
@@ -694,7 +694,7 @@
 
           </div>
 
-          <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-6 py-2 flex justify-between items-center shadow-lg z-50">
+          <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-6 py-2 pb-6 flex justify-between items-center shadow-lg z-50">
             <button 
               onClick={() => setActiveTab('home')} 
               className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${activeTab === 'home' ? 'text-pureBlue' : 'text-slate-400'}`}
