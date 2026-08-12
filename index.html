@@ -2,8 +2,8 @@
 <html lang="km">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>កម្មវិធីគ្រប់គ្រងហិរញ្ញវត្ថុ - Full Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>កម្មវិធីគ្រប់គ្រងហិរញ្ញវត្ថុ</title>
   
   <!-- Font ខ្មែរ Kantumruy Pro -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,7 +32,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="bg-slate-100 font-sans min-h-screen text-slate-800 pb-10">
+<body class="bg-slate-100 font-sans min-h-screen text-slate-800 pb-20">
 
   <div id="root"></div>
 
@@ -41,18 +41,28 @@
 
     // ⚠️ ដាក់ Web App URL របស់ Google Apps Script ត្រង់នេះ ⚠️
     const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbygQbXEB-856p-WG2A6YADv7lRA5jHzcSh2eIFK3lipMmif_4dvC2_YMawaK7zncI21XA/exec";
-    const EXCHANGE_RATE = 4100; // 1 USD = 4100 KHR
+    const EXCHANGE_RATE = 4100;
+
+    const CATEGORIES = [
+      'ម្ហូបអាហារ', 'ធ្វើដំណើរ/ថ្លៃសាំង', 'ការងារ/ប្រាក់ខែ', 
+      'ការកម្សាន្ត', 'ការសិក្សា', 'ទិញអីវ៉ាន់/សម្ភារៈ', 
+      'ផ្ទះ/ទឹកភ្លើង', 'សុខភាព', 'ទូទៅ'
+    ];
 
     function App() {
       const [transactions, setTransactions] = useState([]);
       const [loading, setLoading] = useState(false);
       const [syncing, setSyncing] = useState(false);
       
-      // Filter & Search States
+      // Tab Navigation State
+      const [activeTab, setActiveTab] = useState('home');
+
+      // Filter States (Month Filter - 'thisMonth' ជា Default)
+      const [timeFilter, setTimeFilter] = useState('thisMonth'); // 'thisMonth', 'lastMonth', 'all'
       const [search, setSearch] = useState('');
-      const [currency, setCurrency] = useState('USD'); // 'USD' or 'KHR'
+      const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('ទាំងអស់');
+      const [currency, setCurrency] = useState('USD');
       const [budgetLimit, setBudgetLimit] = useState(() => localStorage.getItem('budgetLimit') || 500);
-      const [isSettingBudget, setIsSettingBudget] = useState(false);
       const [tempBudget, setTempBudget] = useState(budgetLimit);
 
       // Form States
@@ -60,47 +70,40 @@
       const [amount, setAmount] = useState('');
       const [formCurrency, setFormCurrency] = useState('USD');
       const [type, setType] = useState('expense');
-      const [category, setCategory] = useState('ម្ហូបអាហារ');
+      const [category, setCategory] = useState(CATEGORIES[0]);
       const [showForm, setShowForm] = useState(false);
 
       const chartRef = useRef(null);
       const chartInstance = useRef(null);
 
-      // ១. ទាញទិន្នន័យ (Fetch Data) ពី Google Sheets ពេលបើក App ដំបូង
+      // Fetch Data
       const fetchData = async () => {
         if (!GOOGLE_SHEET_URL || GOOGLE_SHEET_URL.includes("YOUR_GOOGLE")) return;
         setSyncing(true);
         try {
           const res = await fetch(GOOGLE_SHEET_URL);
           const data = await res.json();
-          if (Array.isArray(data)) {
-            setTransactions(data.reverse()); // យកទិន្នន័យថ្មីមកលើ
-          }
+          if (Array.isArray(data)) setTransactions(data.reverse());
         } catch (err) {
           console.error("Fetch Error:", err);
         }
         setSyncing(false);
       };
 
-      useEffect(() => {
-        fetchData();
-      }, []);
+      useEffect(() => { fetchData(); }, []);
 
       useEffect(() => {
         if (window.lucide) window.lucide.createIcons();
-      }, [transactions, showForm, currency]);
+      }, [transactions, showForm, activeTab, currency, selectedCategoryFilter, timeFilter, syncing]);
 
-      // បន្ថែមប្រតិបត្តិការថ្មី
+      // បន្ថែមប្រតិបត្តិការ
       const handleAddTransaction = async (e) => {
         e.preventDefault();
         if (!title || !amount) return;
 
         setLoading(true);
         let finalAmount = parseFloat(amount);
-        // បើបញ្ចូលជាប្រាក់រៀល ត្រូវបកប្រែជា USD ដើម្បីទុករៀបរយក្នុង DB
-        if (formCurrency === 'KHR') {
-          finalAmount = finalAmount / EXCHANGE_RATE;
-        }
+        if (formCurrency === 'KHR') finalAmount = finalAmount / EXCHANGE_RATE;
 
         const newTx = {
           id: Date.now(),
@@ -121,15 +124,10 @@
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(newTx),
             });
-          } catch (err) {
-            console.error("Save Error:", err);
-          }
+          } catch (err) { console.error("Save Error:", err); }
         }
 
-        setTitle('');
-        setAmount('');
-        setShowForm(false);
-        setLoading(false);
+        setTitle(''); setAmount(''); setShowForm(false); setLoading(false);
       };
 
       // លុបទិន្នន័យ
@@ -143,29 +141,48 @@
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ action: "delete", id }),
             });
-          } catch (err) {
-            console.error("Delete Error:", err);
-          }
+          } catch (err) { console.error("Delete Error:", err); }
         }
       };
 
+      // Logic ចម្រោះទិន្នន័យតាម ខែ (This Month / Last Month / All)
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+
+      const dateFilteredTransactions = transactions.filter(t => {
+        if (timeFilter === 'all') return true;
+        
+        const txDate = new Date(t.date);
+        const txYear = txDate.getFullYear();
+        const txMonth = txDate.getMonth();
+
+        if (timeFilter === 'thisMonth') {
+          return txYear === currentYear && txMonth === currentMonth;
+        }
+
+        if (timeFilter === 'lastMonth') {
+          const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+          const lastMonthIndex = currentMonth === 0 ? 11 : currentMonth - 1;
+          return txYear === lastMonthYear && txMonth === lastMonthIndex;
+        }
+
+        return true;
+      });
+
       // គណនាសរុប
-      const totalIncomeUSD = transactions.filter(t => t.type === 'income').reduce((a, c) => a + c.amount, 0);
-      const totalExpenseUSD = transactions.filter(t => t.type === 'expense').reduce((a, c) => a + c.amount, 0);
+      const totalIncomeUSD = dateFilteredTransactions.filter(t => t.type === 'income').reduce((a, c) => a + c.amount, 0);
+      const totalExpenseUSD = dateFilteredTransactions.filter(t => t.type === 'expense').reduce((a, c) => a + c.amount, 0);
       const balanceUSD = totalIncomeUSD - totalExpenseUSD;
 
-      // មុខងារកំណត់រូបិយប័ណ្ណបង្ហាញ
       const formatMoney = (valInUSD) => {
-        if (currency === 'KHR') {
-          return (valInUSD * EXCHANGE_RATE).toLocaleString('km-KH') + ' ៛';
-        }
+        if (currency === 'KHR') return (valInUSD * EXCHANGE_RATE).toLocaleString('km-KH') + ' ៛';
         return '$' + valInUSD.toFixed(2);
       };
 
-      // Export ជា CSV (Excel)
       const exportToCSV = () => {
         let csv = "ID,Title,Amount(USD),Type,Category,Date\n";
-        transactions.forEach(t => {
+        dateFilteredTransactions.forEach(t => {
           csv += `"${t.id}","${t.title}","${t.amount}","${t.type}","${t.category}","${t.date}"\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -176,303 +193,317 @@
         a.click();
       };
 
-      // រៀបចំ Chart.js សម្រាប់ Category Pie Chart
+      // Chart Display
       useEffect(() => {
-        if (!chartRef.current) return;
-        const expenses = transactions.filter(t => t.type === 'expense');
+        if (activeTab !== 'analytics' || !chartRef.current) return;
+        const expenses = dateFilteredTransactions.filter(t => t.type === 'expense');
         const categories = {};
-        expenses.forEach(t => {
-          categories[t.category] = (categories[t.category] || 0) + t.amount;
-        });
+        expenses.forEach(t => { categories[t.category] = (categories[t.category] || 0) + t.amount; });
 
-        const labels = Object.keys(categories);
-        const dataVals = Object.values(categories);
-
-        if (chartInstance.current) {
-          chartInstance.current.destroy();
-        }
+        if (chartInstance.current) chartInstance.current.destroy();
 
         const ctx = chartRef.current.getContext('2d');
         chartInstance.current = new Chart(ctx, {
           type: 'doughnut',
           data: {
-            labels: labels.length ? labels : ['គ្មានទិន្នន័យ'],
+            labels: Object.keys(categories).length ? Object.keys(categories) : ['គ្មានទិន្នន័យ'],
             datasets: [{
-              data: dataVals.length ? dataVals : [1],
-              backgroundColor: ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#64748B']
+              data: Object.values(categories).length ? Object.values(categories) : [1],
+              backgroundColor: ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#64748B', '#06B6D4', '#84CC16']
             }]
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom' } }
-          }
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
-      }, [transactions]);
+      }, [dateFilteredTransactions, activeTab]);
 
-      // ស្វែងរក Filter
-      const filteredTransactions = transactions.filter(t => 
-        t.title.toLowerCase().includes(search.toLowerCase()) || 
-        t.category.toLowerCase().includes(search.toLowerCase())
-      );
+      // Filter Search & Category
+      const finalDisplayTransactions = dateFilteredTransactions.filter(t => {
+        const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) || 
+                              t.category.toLowerCase().includes(search.toLowerCase());
+        const matchesCategory = selectedCategoryFilter === 'ទាំងអស់' || t.category === selectedCategoryFilter;
+        return matchesSearch && matchesCategory;
+      });
 
-      // ការកំណត់ Budget Alert
       const isOverBudget = totalExpenseUSD > budgetLimit;
       const budgetPercent = Math.min((totalExpenseUSD / budgetLimit) * 100, 100);
 
       return (
-        <div className="p-3 sm:p-6 max-w-4xl mx-auto space-y-5">
+        <div className="w-full max-w-md mx-auto min-h-screen flex flex-col justify-between">
           
-          {/* Top Bar Navigation */}
-          <div className="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-700 text-sm">រូបិយប័ណ្ណ៖</span>
-              <button 
-                onClick={() => setCurrency(currency === 'USD' ? 'KHR' : 'USD')}
-                className="bg-blue-50 text-pureBlue font-bold px-3 py-1 rounded-xl text-xs hover:bg-blue-100 transition"
-              >
-                {currency === 'USD' ? 'USD ($)' : 'KHR (៛)'}
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={fetchData} className="p-2 text-slate-500 hover:text-pureBlue transition" title="Sync ទិន្នន័យ">
-                <i data-lucide="refresh-cw" className={`w-4 h-4 ${syncing ? 'animate-spin text-pureBlue' : ''}`}></i>
-              </button>
-              <button onClick={exportToCSV} className="flex items-center gap-1 bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow">
-                <i data-lucide="download" className="w-3.5 h-3.5"></i> Export CSV
-              </button>
-            </div>
-          </div>
+          <div className="p-3 space-y-3">
 
-          {/* ---------------- ផ្នែកបង្ហាញទឹកប្រាក់ Main Card ---------------- */}
-          <div className="bg-pureBlue text-white rounded-3xl p-6 shadow-xl space-y-6">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-blue-100 font-medium">របាយការណ៍ហិរញ្ញវត្ថុសរុប</span>
-              <span className="bg-white/20 px-3 py-1 rounded-full text-xs">1 USD = 4,100 KHR</span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-              <div className="md:col-span-5 flex flex-col items-center justify-center text-center">
-                <i data-lucide="wallet" className="w-8 h-8 text-blue-200 mb-1"></i>
-                <span className="text-xs text-blue-100 font-light">ប្រាក់នៅសល់សរុប</span>
-                <span className="text-2xl font-bold text-white mt-1">{formatMoney(balanceUSD)}</span>
-              </div>
-
-              <div className="md:col-span-7 space-y-3">
-                <div className="bg-white text-slate-800 px-5 py-3 rounded-2xl flex justify-between items-center shadow-md">
-                  <div>
-                    <div className="text-xs text-slate-400 font-medium">ចំណូលសរុប</div>
-                    <div className="text-lg font-bold text-emerald-600">+{formatMoney(totalIncomeUSD)}</div>
-                  </div>
-                  <span className="bg-emerald-100 text-emerald-600 p-2 rounded-xl">
-                    <i data-lucide="arrow-up-circle" className="w-5 h-5"></i>
-                  </span>
-                </div>
-
-                <div className="bg-white text-slate-800 px-5 py-3 rounded-2xl flex justify-between items-center shadow-md">
-                  <div>
-                    <div className="text-xs text-slate-400 font-medium">ចំណាយសរុប</div>
-                    <div className="text-lg font-bold text-rose-600">-{formatMoney(totalExpenseUSD)}</div>
-                  </div>
-                  <span className="bg-rose-100 text-rose-600 p-2 rounded-xl">
-                    <i data-lucide="arrow-down-circle" className="w-5 h-5"></i>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ---------------- Monthly Budget Limit Alert ---------------- */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="font-bold text-slate-700">កម្រិតថវិកាចំណាយប្រចាំខែ (Monthly Budget)</span>
-              <button 
-                onClick={() => setIsSettingBudget(!isSettingBudget)} 
-                className="text-pureBlue underline hover:text-blue-800"
-              >
-                {isSettingBudget ? 'បិទ' : 'កំណត់ថវិកា'}
-              </button>
-            </div>
-
-            {isSettingBudget && (
-              <div className="flex gap-2 pt-1">
-                <input 
-                  type="number" 
-                  value={tempBudget} 
-                  onChange={(e) => setTempBudget(e.target.value)}
-                  className="p-1.5 border border-slate-300 rounded-xl text-xs w-full outline-none focus:border-pureBlue"
-                  placeholder="កំណត់ចំនួន (USD)"
-                />
-                <button 
-                  onClick={() => {
-                    setBudgetLimit(parseFloat(tempBudget));
-                    localStorage.setItem('budgetLimit', tempBudget);
-                    setIsSettingBudget(false);
-                  }}
-                  className="bg-pureBlue text-white px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap"
-                >
-                  រក្សាទុក
-                </button>
-              </div>
-            )}
-
-            <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-              <div 
-                className={`h-full transition-all ${isOverBudget ? 'bg-rose-600' : 'bg-pureBlue'}`}
-                style={{ width: `${budgetPercent}%` }}
-              ></div>
-            </div>
-
-            <div className="flex justify-between text-xs text-slate-500">
-              <span>បានចំណាយ៖ {formatMoney(totalExpenseUSD)} ({budgetPercent.toFixed(0)}%)</span>
-              <span>ពិដានថវិកា៖ ${budgetLimit}</span>
-            </div>
-
-            {isOverBudget && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs p-2.5 rounded-xl flex items-center gap-2 font-medium">
-                <i data-lucide="alert-triangle" className="w-4 h-4"></i>
-                ប្រយ័ត្ន! ការចំណាយរបស់អ្នកបានលើសពិដានថវិកាដែលបានកំណត់ហើយ!
-              </div>
-            )}
-          </div>
-
-          {/* ---------------- ក្រាហ្វិកបែងចែកតាមប្រភេទចំណាយ (Pie Chart) ---------------- */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="text-sm font-bold text-slate-800">ការបែងចែកចំណាយតាមប្រភេទ (Category Chart)</h3>
-            <div className="h-48 relative">
-              <canvas ref={chartRef}></canvas>
-            </div>
-          </div>
-
-          {/* ---------------- ផ្នែកស្វែងរក និង បញ្ចូលទិន្នន័យ ---------------- */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
-            <div className="relative w-full sm:w-64">
-              <i data-lucide="search" className="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
-              <input 
-                type="text" 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="ស្វែងរកប្រវត្តិ..." 
-                className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-pureBlue shadow-sm"
-              />
-            </div>
-
-            <button 
-              onClick={() => setShowForm(!showForm)}
-              className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-pureBlue text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-blue-800 transition shadow"
-            >
-              <i data-lucide="plus-circle" className="w-4 h-4"></i>
-              {showForm ? 'បិទទម្រង់' : 'បន្ថែមប្រតិបត្តិការ'}
-            </button>
-          </div>
-
-          {/* Form បញ្ចូលទិន្នន័យ */}
-          {showForm && (
-            <form onSubmit={handleAddTransaction} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 text-sm">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">បរិយាយ</label>
-                  <input 
-                    type="text" 
-                    value={title} 
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="ឧ. ទិញបាយ, ប្រាក់ខែ" 
-                    className="w-full p-2 border border-slate-200 rounded-xl outline-none focus:border-pureBlue text-xs"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">ចំនួនទឹកប្រាក់</label>
-                  <div className="flex gap-2">
-                    <input 
-                      type="number" 
-                      step="0.01"
-                      value={amount} 
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder="0.00" 
-                      className="w-full p-2 border border-slate-200 rounded-xl outline-none focus:border-pureBlue text-xs"
-                      required
-                    />
+            {/* ==================== 1. ទំព័រដើម (HOME TAB) ==================== */}
+            {activeTab === 'home' && (
+              <div className="space-y-3">
+                
+                {/* កាតបង្ហាញលុយធំ (មាន Dropdown ជ្រើសរើសខែ នៅខាងក្នុង) */}
+                <div className="bg-pureBlue text-white rounded-3xl p-5 shadow-lg space-y-4 relative">
+                  
+                  {/* របារឧបករណ៍ខាងលើក្នុងកាត (Dropdown ខែ + ប៊ូតុង Refresh) */}
+                  <div className="flex justify-between items-center">
                     <select 
-                      value={formCurrency} 
-                      onChange={(e) => setFormCurrency(e.target.value)}
-                      className="p-2 border border-slate-200 rounded-xl text-xs outline-none bg-slate-50"
+                      value={timeFilter} 
+                      onChange={(e) => setTimeFilter(e.target.value)}
+                      className="bg-white/15 text-white border border-white/20 rounded-xl px-2.5 py-1 text-[11px] font-semibold outline-none backdrop-blur-md cursor-pointer hover:bg-white/25 transition"
                     >
-                      <option value="USD">$ USD</option>
-                      <option value="KHR">៛ KHR</option>
+                      <option value="thisMonth" className="text-slate-800">📅 ខែនេះ</option>
+                      <option value="lastMonth" className="text-slate-800">⏮️ ខែមុន</option>
+                      <option value="all" className="text-slate-800">🌐 ទាំងអស់</option>
                     </select>
+
+                    <button 
+                      onClick={fetchData} 
+                      className="text-blue-200 hover:text-white p-1 transition"
+                      title="Sync ទិន្នន័យ"
+                    >
+                      <i data-lucide="refresh-cw" className={`w-4 h-4 ${syncing ? 'animate-spin text-white' : ''}`}></i>
+                    </button>
+                  </div>
+
+                  {/* ចំនួនទឹកប្រាក់សរុប */}
+                  <div className="text-center space-y-1 pt-1">
+                    <span className="text-[11px] text-blue-200 font-light">
+                      {timeFilter === 'thisMonth' ? 'ប្រាក់នៅសល់ (ខែនេះ)' : timeFilter === 'lastMonth' ? 'ប្រាក់នៅសល់ (ខែមុន)' : 'ប្រាក់នៅសល់សរុប'}
+                    </span>
+                    <div className="text-3xl font-extrabold">{formatMoney(balanceUSD)}</div>
+                  </div>
+
+                  {/* ចំណូល និង ចំណាយ */}
+                  <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-blue-400/30">
+                    <div className="bg-white/10 p-2.5 rounded-2xl flex items-center gap-2">
+                      <i data-lucide="arrow-up-circle" className="w-5 h-5 text-emerald-300"></i>
+                      <div>
+                        <div className="text-[10px] text-blue-100">ចំណូល</div>
+                        <div className="text-xs font-bold text-emerald-300">+{formatMoney(totalIncomeUSD)}</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/10 p-2.5 rounded-2xl flex items-center gap-2">
+                      <i data-lucide="arrow-down-circle" className="w-5 h-5 text-rose-300"></i>
+                      <div>
+                        <div className="text-[10px] text-blue-100">ចំណាយ</div>
+                        <div className="text-xs font-bold text-rose-300">-{formatMoney(totalExpenseUSD)}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">ប្រភេទ</label>
-                  <select 
-                    value={type} 
-                    onChange={(e) => setType(e.target.value)}
-                    className="w-full p-2 border border-slate-200 rounded-xl outline-none focus:border-pureBlue text-xs"
-                  >
-                    <option value="expense">ចំណាយ (-)</option>
-                    <option value="income">ចំណូល (+)</option>
-                  </select>
-                </div>
+                {/* ប៊ូតុងបើក Form បញ្ចូលទិន្នន័យ */}
+                <button 
+                  onClick={() => setShowForm(!showForm)}
+                  className="w-full bg-pureBlue text-white py-3 rounded-2xl text-xs font-semibold hover:bg-blue-800 transition shadow flex justify-center items-center gap-2"
+                >
+                  <i data-lucide={showForm ? "x-circle" : "plus-circle"} className="w-4 h-4"></i>
+                  {showForm ? 'បិទទម្រង់' : 'បន្ថែមចំណូល / ចំណាយ'}
+                </button>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">ជំពូក/ប្រភេទចំណាយ</label>
-                  <select 
-                    value={category} 
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full p-2 border border-slate-200 rounded-xl outline-none focus:border-pureBlue text-xs"
-                  >
-                    <option value="ម្ហូបអាហារ">ម្ហូបអាហារ</option>
-                    <option value="ធ្វើដំណើរ">ធ្វើដំណើរ/ថ្លៃសាំង</option>
-                    <option value="ការងារ">ការងារ/ប្រាក់ខែ</option>
-                    <option value="ការកម្សាន្ត">ការកម្សាន្ត</option>
-                    <option value="ការសិក្សា">ការសិក្សា</option>
-                    <option value="ទូទៅ">ទូទៅ</option>
-                  </select>
-                </div>
-              </div>
+                {/* Form បញ្ចូលទិន្នន័យ */}
+                {showForm && (
+                  <form onSubmit={handleAddTransaction} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 text-xs">
+                    <div>
+                      <label className="block text-slate-600 mb-1">បរិយាយ</label>
+                      <input 
+                        type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                        placeholder="ឧ. ទិញបាយ, ប្រាក់ខែ" className="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:border-pureBlue" required
+                      />
+                    </div>
 
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full bg-pureBlue text-white py-2.5 rounded-xl font-medium hover:bg-blue-800 transition text-xs flex justify-center items-center gap-2"
-              >
-                {loading ? 'កំពុងរក្សាទុក...' : 'រក្សាទុកទិន្នន័យ'}
-              </button>
-            </form>
-          )}
-
-          {/* List ប្រវត្តិប្រតិបត្តិការ */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="divide-y divide-slate-100">
-              {filteredTransactions.length === 0 ? (
-                <div className="p-6 text-center text-slate-400 text-xs">មិនមានទិន្នន័យត្រូវបង្ហាញឡើយ</div>
-              ) : (
-                filteredTransactions.map((t) => (
-                  <div key={t.id} className="p-3.5 flex justify-between items-center hover:bg-slate-50 transition">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                        <i data-lucide={t.type === 'income' ? 'arrow-up-circle' : 'arrow-down-circle'} className="w-5 h-5"></i>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-slate-600 mb-1">ចំនួនទឹកប្រាក់</label>
+                        <input 
+                          type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
+                          placeholder="0.00" className="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:border-pureBlue" required
+                        />
                       </div>
                       <div>
-                        <div className="font-semibold text-slate-800 text-sm">{t.title}</div>
-                        <div className="text-xs text-slate-400">{t.category} • {t.date}</div>
+                        <label className="block text-slate-600 mb-1">រូបិយប័ណ្ណ</label>
+                        <select value={formCurrency} onChange={(e) => setFormCurrency(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none">
+                          <option value="USD">$ USD</option>
+                          <option value="KHR">៛ KHR</option>
+                        </select>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-600' : 'text-slate-800'}`}>
-                        {t.type === 'income' ? '+' : '-'}{formatMoney(t.amount)}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-slate-600 mb-1">ប្រភេទ</label>
+                        <select value={type} onChange={(e) => setType(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
+                          <option value="expense">ចំណាយ (-)</option>
+                          <option value="income">ចំណូល (+)</option>
+                        </select>
                       </div>
-                      <button onClick={() => handleDelete(t.id)} className="text-slate-300 hover:text-rose-600 transition">
-                        <i data-lucide="trash-2" className="w-4 h-4"></i>
-                      </button>
+                      <div>
+                        <label className="block text-slate-600 mb-1">ជំពូកចំណាយ</label>
+                        <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl outline-none bg-white">
+                          {CATEGORIES.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
+                        </select>
+                      </div>
                     </div>
+
+                    <button type="submit" disabled={loading} className="w-full bg-pureBlue text-white py-2.5 rounded-xl font-medium text-xs mt-2">
+                      {loading ? 'កំពុងរក្សាទុក...' : 'រក្សាទុក'}
+                    </button>
+                  </form>
+                )}
+
+                {/* Search & Category Filter */}
+                <div className="flex gap-2">
+                  <input 
+                    type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+                    placeholder="ស្វែងរកប្រវត្តិ..." 
+                    className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs outline-none shadow-sm"
+                  />
+                  <select 
+                    value={selectedCategoryFilter} onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                    className="p-2 bg-white border border-slate-200 rounded-xl text-xs outline-none shadow-sm text-slate-700"
+                  >
+                    <option value="ទាំងអស់">ទាំងអស់</option>
+                    {CATEGORIES.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
+                  </select>
+                </div>
+
+                {/* បញ្ជីប្រវត្តិប្រតិបត្តិការ */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="p-3 bg-slate-50 border-b border-slate-100 font-bold text-xs text-slate-700 flex justify-between">
+                    <span>ប្រវត្តិប្រតិបត្តិការ</span>
+                    <span className="text-[10px] text-slate-400 font-normal">({finalDisplayTransactions.length} ប្រតិបត្តិការ)</span>
                   </div>
-                ))
-              )}
-            </div>
+                  <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                    {finalDisplayTransactions.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs">មិនមានទិន្នន័យក្នុងកំឡុងពេលនេះឡើយ</div>
+                    ) : (
+                      finalDisplayTransactions.map((t) => (
+                        <div key={t.id} className="p-3 flex justify-between items-center hover:bg-slate-50 transition">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`p-1.5 rounded-lg ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                              <i data-lucide={t.type === 'income' ? 'arrow-up-circle' : 'arrow-down-circle'} className="w-4 h-4"></i>
+                            </div>
+                            <div>
+                              <div className="font-semibold text-slate-800 text-xs">{t.title}</div>
+                              <div className="text-[10px] text-slate-400">{t.category} • {t.date}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold text-xs ${t.type === 'income' ? 'text-emerald-600' : 'text-slate-800'}`}>
+                              {t.type === 'income' ? '+' : '-'}{formatMoney(t.amount)}
+                            </span>
+                            <button onClick={() => handleDelete(t.id)} className="text-slate-300 hover:text-rose-600 transition">
+                              <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* ==================== 2. ទំព័រវិភាគ (ANALYTICS TAB) ==================== */}
+            {activeTab === 'analytics' && (
+              <div className="space-y-3">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-bold text-slate-800">ការបែងចែកចំណាយតាមប្រភេទ</h3>
+                    <span className="text-[10px] bg-blue-50 text-pureBlue font-bold px-2 py-0.5 rounded-lg">
+                      {timeFilter === 'thisMonth' ? 'ខែនេះ' : timeFilter === 'lastMonth' ? 'ខែមុន' : 'ទាំងអស់'}
+                    </span>
+                  </div>
+                  <div className="h-52 relative">
+                    <canvas ref={chartRef}></canvas>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-700">ពិដានថវិកាប្រចាំខែ</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input 
+                      type="number" value={tempBudget} onChange={(e) => setTempBudget(e.target.value)}
+                      className="p-2 border border-slate-200 rounded-xl text-xs w-full outline-none" placeholder="កំណត់ថវិកា ($)"
+                    />
+                    <button 
+                      onClick={() => { setBudgetLimit(parseFloat(tempBudget)); localStorage.setItem('budgetLimit', tempBudget); }}
+                      className="bg-pureBlue text-white px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap"
+                    >
+                      រក្សាទុក
+                    </button>
+                  </div>
+
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div className={`h-full ${isOverBudget ? 'bg-rose-600' : 'bg-pureBlue'}`} style={{ width: `${budgetPercent}%` }}></div>
+                  </div>
+
+                  <div className="flex justify-between text-[11px] text-slate-500">
+                    <span>បានចំណាយ៖ {formatMoney(totalExpenseUSD)}</span>
+                    <span>ពិដាន៖ ${budgetLimit}</span>
+                  </div>
+
+                  {isOverBudget && (
+                    <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs p-2 rounded-xl flex items-center gap-1.5">
+                      <i data-lucide="alert-triangle" className="w-4 h-4"></i> ការចំណាយរបស់អ្នកបានលើសពិដានថវិកាហើយ!
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ==================== 3. ទំព័រជម្រើស (TOOLS TAB) ==================== */}
+            {activeTab === 'tools' && (
+              <div className="space-y-3">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <h3 className="text-xs font-bold text-slate-800 mb-2">រូបិយប័ណ្ណបង្ហាញ</h3>
+                  <div className="flex justify-between items-center p-2 bg-slate-50 rounded-xl">
+                    <span className="text-xs text-slate-600">ប្តូររូបិយប័ណ្ណ</span>
+                    <button 
+                      onClick={() => setCurrency(currency === 'USD' ? 'KHR' : 'USD')}
+                      className="bg-pureBlue text-white font-bold px-3 py-1.5 rounded-xl text-xs"
+                    >
+                      {currency === 'USD' ? 'USD ($)' : 'KHR (៛)'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <h3 className="text-xs font-bold text-slate-800 mb-2">ទាញយកទិន្នន័យ (Export)</h3>
+                  <button onClick={exportToCSV} className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white p-2.5 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition">
+                    <i data-lucide="download" className="w-4 h-4"></i> Export CSV (Excel)
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* ==================== BOTTOM NAVIGATION BAR ==================== */}
+          <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-slate-200 px-6 py-2 flex justify-between items-center shadow-lg z-50">
+            <button 
+              onClick={() => setActiveTab('home')} 
+              className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${activeTab === 'home' ? 'text-pureBlue' : 'text-slate-400'}`}
+            >
+              <i data-lucide="home" className="w-5 h-5"></i>
+              <span>ទំព័រដើម</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('analytics')} 
+              className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${activeTab === 'analytics' ? 'text-pureBlue' : 'text-slate-400'}`}
+            >
+              <i data-lucide="pie-chart" className="w-5 h-5"></i>
+              <span>ការវិភាគ</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('tools')} 
+              className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${activeTab === 'tools' ? 'text-pureBlue' : 'text-slate-400'}`}
+            >
+              <i data-lucide="sliders" className="w-5 h-5"></i>
+              <span>ឧបករណ៍</span>
+            </button>
           </div>
 
         </div>
@@ -480,7 +511,7 @@
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    root.render(<App/>);
   </script>
 </body>
 </html>
