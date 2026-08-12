@@ -1,0 +1,21 @@
+{
+  "short_name": "ហិរញ្ញវត្ថុ",
+  "name": "កម្មវិធីគ្រប់គ្រងហិរញ្ញវត្ថុ",
+  "icons": [
+    {
+      "src": "icon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#1D4ED8",
+  "theme_color": "#1D4ED8",
+  "display": "standalone",
+  "orientation": "portrait"
+}
