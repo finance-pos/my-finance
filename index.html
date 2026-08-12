@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>កម្មវិធីគ្រប់គ្រងហិរញ្ញវត្ថុ</title>
+  
+  <!-- Font ខ្មែរ Kantumruy Pro -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Kantumruy Pro"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React & Babel Core CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-50 font-sans min-h-screen">
+
+  <!-- React App Root -->
+  <div id="root"></div>
+
+  <!-- React Code -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function App() {
+      const [filter, setFilter] = useState('daily');
+      
+      // ទិន្នន័យចំណូលចំណាយ
+      const [transactions, setTransactions] = useState([
+        { id: 1, title: 'ប្រាក់ខែ', amount: 800, type: 'income', category: 'ការងារ', date: '2026-08-12' },
+        { id: 2, title: 'ទិញម្ហូបអាហារ', amount: 15, type: 'expense', category: 'ចំណាយប្រចាំថ្ងៃ', date: '2026-08-12' },
+        { id: 3, title: 'ថ្លៃសាំង', amount: 5, type: 'expense', category: 'ធ្វើដំណើរ', date: '2026-08-11' }
+      ]);
+
+      // Form States
+      const [title, setTitle] = useState('');
+      const [amount, setAmount] = useState('');
+      const [type, setType] = useState('expense');
+      const [category, setCategory] = useState('ទូទៅ');
+      const [showForm, setShowForm] = useState(false);
+
+      // បង្កើត Icons ឡើងវិញរាល់ពេល UI Update
+      useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }, [transactions, showForm]);
+
+      // បន្ថែមទិន្នន័យ
+      const handleAddTransaction = (e) => {
+        e.preventDefault();
+        if (!title || !amount) return;
+
+        const newTx = {
+          id: Date.now(),
+          title,
+          amount: parseFloat(amount),
+          type,
+          category,
+          date: new Date().toISOString().split('T')[0]
+        };
+
+        setTransactions([newTx, ...transactions]);
+        setTitle('');
+        setAmount('');
+        setShowForm(false);
+      };
+
+      // លុបទិន្នន័យ
+      const handleDelete = (id) => {
+        setTransactions(transactions.filter(t => t.id !== id));
+      };
+
+      // គណនាទឹកប្រាក់
+      const totalIncome = transactions
+        .filter(t => t.type === 'income')
+        .reduce((acc, curr) => acc + curr.amount, 0);
+
+      const totalExpense = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((acc, curr) => acc + curr.amount, 0);
+
+      const balance = totalIncome - totalExpense;
+
+      return (
+        <div className="p-4 md:p-8">
+          <div className="max-w-4xl mx-auto space-y-6">
+            
+            {/* Header */}
+            <div className="flex justify-between items-center flex-wrap gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">គ្រប់គ្រងហិរញ្ញវត្ថុ</h1>
+                <p className="text-sm text-slate-500">តាមដានចំណូល និងចំណាយប្រចាំថ្ងៃ</p>
+              </div>
+              
+              <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm text-sm">
+                {['daily', 'weekly', 'yearly'].map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setFilter(mode)}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                      filter === mode ? 'bg-indigo-600 text-white shadow' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {mode === 'daily' ? 'ប្រចាំថ្ងៃ' : mode === 'weekly' ? 'ប្រចាំសប្តាហ៍' : 'ប្រចាំឆ្នាំ'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ១. កាតបង្ហាញទឹកលុយសរុបធំៗនៅខាងលើ (Top Cards) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              
+              {/* ប្រាក់នៅសល់ */}
+              <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white p-6 rounded-2xl shadow-lg shadow-indigo-100">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-indigo-100 text-sm">ប្រាក់នៅសល់សរុប</span>
+                  <i data-lucide="wallet" className="w-6 h-6 text-indigo-200"></i>
+                </div>
+                <div className="text-3xl font-extrabold">${balance.toFixed(2)}</div>
+              </div>
+
+              {/* ចំណូលសរុប */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-slate-500 text-sm">ចំណូលសរុប</span>
+                  <i data-lucide="arrow-up-circle" className="w-6 h-6 text-emerald-500"></i>
+                </div>
+                <div className="text-3xl font-bold text-slate-800">${totalIncome.toFixed(2)}</div>
+              </div>
+
+              {/* ចំណាយសរុប */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-slate-500 text-sm">ចំណាយសរុប</span>
+                  <i data-lucide="arrow-down-circle" className="w-6 h-6 text-rose-500"></i>
+                </div>
+                <div className="text-3xl font-bold text-slate-800">${totalExpense.toFixed(2)}</div>
+              </div>
+
+            </div>
+
+            {/* ប៊ូតុងបន្ថែម */}
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-bold text-slate-800">ប្រវត្តិប្រតិបត្តិការ ({filter})</h2>
+              <button 
+                onClick={() => setShowForm(!showForm)}
+                className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition"
+              >
+                <i data-lucide="plus-circle" className="w-4 h-4"></i>
+                {showForm ? 'បិទទម្រង់' : 'បន្ថែមថ្មី'}
+              </button>
+            </div>
+
+            {/* ២. Form បញ្ចូលទិន្នន័យ */}
+            {showForm && (
+              <form onSubmit={handleAddTransaction} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">បរិយាយ</label>
+                    <input 
+                      type="text" 
+                      value={title} 
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="ឧ. ទិញបាយព្រឹក" 
+                      className="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:border-indigo-600"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ចំនួនទឹកប្រាក់ ($)</label>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      value={amount} 
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="0.00" 
+                      className="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:border-indigo-600"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ប្រភេទ</label>
+                    <select 
+                      value={type} 
+                      onChange={(e) => setType(e.target.value)}
+                      className="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:border-indigo-600"
+                    >
+                      <option value="expense">ចំណាយ</option>
+                      <option value="income">ចំណូល</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ជំពូក/ប្រភេទតូច</label>
+                    <input 
+                      type="text" 
+                      value={category} 
+                      onChange={(e) => setCategory(e.target.value)}
+                      placeholder="ឧ. ម្ហូបអាហារ, ធ្វើដំណើរ" 
+                      className="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:border-indigo-600"
+                    />
+                  </div>
+                </div>
+                <button type="submit" className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition">
+                  រក្សាទុក
+                </button>
+              </form>
+            )}
+
+            {/* ៣. បញ្ជីប្រតិបត្តិការ */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="divide-y divide-slate-100">
+                {transactions.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400">មិនទាន់មានទិន្នន័យនៅឡើយទេ</div>
+                ) : (
+                  transactions.map((t) => (
+                    <div key={t.id} className="p-4 flex justify-between items-center hover:bg-slate-50 transition">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-xl ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                          <i data-lucide={t.type === 'income' ? 'arrow-up-circle' : 'arrow-down-circle'} className="w-5 h-5"></i>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-800">{t.title}</div>
+                          <div className="text-xs text-slate-400">{t.category} • {t.date}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className={`font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-slate-800'}`}>
+                          {t.type === 'income' ? '+' : '-'}${t.amount.toFixed(2)}
+                        </div>
+                        <button onClick={() => handleDelete(t.id)} className="text-slate-400 hover:text-rose-600 transition">
+                          <i data-lucide="trash-2" className="w-4 h-4"></i>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    // Render React App ទៅកាន់ Root element
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
