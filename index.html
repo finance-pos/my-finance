@@ -173,9 +173,51 @@
         }
       };
 
-      // Biometric Auth Handler
+      // មុខងារចុះឈ្មោះ Biometric (Registration) មុនពេលអាចប្រើប្រាស់
+      const handleRegisterBiometric = async () => {
+        try {
+          if (!window.PublicKeyCredential) {
+            alert('Browser របស់អ្នកមិនគាំទ្រមុខងារ Face ID / ក្រយៅដៃទេ។');
+            return;
+          }
+
+          const challenge = new Uint8Array(32);
+          window.crypto.getRandomValues(challenge);
+
+          const publicKey = {
+            challenge: challenge,
+            rp: { name: "Finance Pro App" },
+            user: {
+              id: Uint8Array.from("FinanceUser", c => c.charCodeAt(0)),
+              name: "user@finance.com",
+              displayName: "User"
+            },
+            pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+            timeout: 60000,
+            attestation: "none",
+            authenticatorSelection: {
+              authenticatorAttachment: "platform",
+              userVerification: "required"
+            }
+          };
+
+          const credential = await navigator.credentials.create({ publicKey });
+          if (credential) {
+            setIsBiometricEnabled(true);
+            localStorage.setItem('biometric_enabled', 'true');
+            alert('បានបើកដំណើរការ Face ID / ក្រយៅដៃ ជោគជ័យ!');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('មិនអាចចុះឈ្មោះ Face ID / ក្រយៅដៃ បានទេ (សូមពិនិត្យមើលការកំណត់ទូរស័ព្ទ ឬ Browser)');
+        }
+      };
+
+      // Biometric Auth Handler (សម្រាប់ដោះសោ)
       const handleBiometricAuth = async () => {
         try {
+          if (!window.PublicKeyCredential) return;
+
           const challenge = new Uint8Array(32);
           window.crypto.getRandomValues(challenge);
 
@@ -192,7 +234,8 @@
             setPinError('');
           }
         } catch (err) {
-          setPinError('ការស្កែនមុខ/ក្រយៅដៃមិនជោគជ័យ');
+          console.error(err);
+          setPinError('การស្កែនមុខ/ក្រយៅដៃមិនជោគជ័យ');
         }
       };
 
@@ -410,7 +453,7 @@
                 </button>
               </form>
 
-              {/* ប៊ូតុងស្កែនមុខ/ក្រយៅដៃនៅកន្លែង PIN (បើកទាល់តែ User បានបើកកំណត់រួច) */}
+              {/* ប៊ូតុងស្កែនមុខ/ក្រយៅដៃ (បង្ហាញប្រសិនបើ User បានបើកនិងចុះឈ្មោះរួច) */}
               {isBiometricEnabled && (
                 <button 
                   type="button"
@@ -695,22 +738,30 @@
                   </div>
                 </div>
 
-                {/* មុខងារបើក/បិទ ស្កែនមុខ/ក្រយៅដៃ ក្នុង Tab ឧបករណ៍ (Tools) */}
+                {/* មុខងារចុះឈ្មោះ និងបើក/បិទ ស្កែនមុខ/ក្រយៅដៃ ក្នុង Tab ឧបករណ៍ (Tools) */}
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <i data-lucide="scan-face" className="w-4 h-4 text-pureBlue"></i>
                     <span className="text-xs font-bold">ស្កែនមុខ / ក្រយៅដៃ (Biometric)</span>
                   </div>
-                  <button 
-                    onClick={() => {
-                      const newState = !isBiometricEnabled;
-                      setIsBiometricEnabled(newState);
-                      localStorage.setItem('biometric_enabled', newState);
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${isBiometricEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
-                  >
-                    {isBiometricEnabled ? 'បើក' : 'បិទ'}
-                  </button>
+                  {isBiometricEnabled ? (
+                    <button 
+                      onClick={() => {
+                        setIsBiometricEnabled(false);
+                        localStorage.setItem('biometric_enabled', 'false');
+                      }}
+                      className="bg-rose-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold"
+                    >
+                      បិទ
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={handleRegisterBiometric}
+                      className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold"
+                    >
+                      ចុះឈ្មោះ / បើក
+                    </button>
+                  )}
                 </div>
 
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
