@@ -50,12 +50,13 @@
       padding-bottom: env(safe-area-inset-bottom);
       padding-left: env(safe-area-inset-left);
       padding-right: env(safe-area-inset-right);
+      overflow: hidden; /* បិទការអូសពេញ body ដើម្បីឱ្យមានផ្នែក scroll ដាច់ដោយឡែក */
     }
   </style>
 </head>
-<body class="bg-slate-100 dark:bg-slate-900 font-sans min-h-screen text-slate-800 dark:text-slate-100 pb-20 transition-colors duration-200">
+<body class="bg-slate-100 dark:bg-slate-900 font-sans h-screen text-slate-800 dark:text-slate-100 transition-colors duration-200">
 
-  <div id="root"></div>
+  <div id="root" class="h-full"></div>
 
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
@@ -106,7 +107,6 @@
       const [pinInput, setPinInput] = useState('');
       const [pinError, setPinError] = useState('');
       
-      // Biometric State
       const [isBiometricEnabled, setIsBiometricEnabled] = useState(() => localStorage.getItem('biometric_enabled') === 'true');
 
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem('dark_mode') === 'true');
@@ -173,7 +173,6 @@
         }
       };
 
-      // មុខងារចុះឈ្មោះ Biometric (Registration) មុនពេលអាចប្រើប្រាស់
       const handleRegisterBiometric = async () => {
         try {
           if (!window.PublicKeyCredential) {
@@ -209,11 +208,10 @@
           }
         } catch (err) {
           console.error(err);
-          alert('មិនអាចចុះឈ្មោះ Face ID / ក្រយៅដៃ បានទេ (សូមពិនិត្យមើលការកំណត់ទូរស័ព្ទ ឬ Browser)');
+          alert('មិនអាចចុះឈ្មោះ Face ID / ក្រយៅដៃ បានទេ');
         }
       };
 
-      // Biometric Auth Handler (សម្រាប់ដោះសោ)
       const handleBiometricAuth = async () => {
         try {
           if (!window.PublicKeyCredential) return;
@@ -235,7 +233,7 @@
           }
         } catch (err) {
           console.error(err);
-          setPinError('การស្កែនមុខ/ក្រយៅដៃមិនជោគជ័យ');
+          setPinError('ការស្កែនមុខ/ក្រយៅដៃមិនជោគជ័យ');
         }
       };
 
@@ -391,7 +389,7 @@
               </div>
               <button 
                 onClick={() => setShowSplash(false)}
-                className="text-slate-300 hover:text-white text-xs font-medium px-4 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition border border-white/10"
+                className="text-slate-300 hover:text-white text-xs font-medium px-4 py-1.5 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full transition border border-white/10"
               >
                 រំលង (Skip)
               </button>
@@ -453,7 +451,6 @@
                 </button>
               </form>
 
-              {/* ប៊ូតុងស្កែនមុខ/ក្រយៅដៃ (បង្ហាញប្រសិនបើ User បានបើកនិងចុះឈ្មោះរួច) */}
               {isBiometricEnabled && (
                 <button 
                   type="button"
@@ -469,9 +466,10 @@
       }
 
       return (
-        <div className="w-full max-w-md mx-auto min-h-screen flex flex-col justify-between">
-          <div className="p-3 space-y-3">
-
+        <div className="w-full max-w-md mx-auto h-full flex flex-col justify-between overflow-hidden relative">
+          
+          {/* ផ្នែកខាងលើ (Fixed Header) ដែលនៅស្ងៀមនឹងថ្កល់មិនរំកិលតាម */}
+          <div className="p-3 space-y-3 flex-shrink-0 bg-slate-100 dark:bg-slate-900 z-10">
             {isOverBudget && (
               <div className="bg-rose-500 text-white text-xs p-3 rounded-2xl flex items-center gap-2 shadow-md animate-pulse">
                 <i data-lucide="alert-triangle" className="w-5 h-5 flex-shrink-0"></i>
@@ -612,46 +610,50 @@
                     {CATEGORIES.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
                   </select>
                 </div>
+              </div>
+            )}
+          </div>
 
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                  <div className="p-3 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 font-bold text-xs flex justify-between">
-                    <span>ប្រវត្តិប្រតិបត្តិការ</span>
-                    <span className="text-[10px] text-slate-400 font-normal">({finalDisplayTransactions.length} ប្រតិបត្តិការ)</span>
-                  </div>
-                  <div className="divide-y divide-slate-100 dark:divide-slate-700 max-h-96 overflow-y-auto">
-                    {finalDisplayTransactions.length === 0 ? (
-                      <div className="p-6 text-center text-slate-400 text-xs">មិនមានទិន្នន័យក្នុងកំឡុងពេលនេះឡើយ</div>
-                    ) : (
-                      finalDisplayTransactions.map((t) => (
-                        <div key={t.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
-                          <div className="flex items-center gap-2.5">
-                            <div className={`p-1.5 rounded-lg ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400'}`}>
-                              <i data-lucide={t.type === 'income' ? 'arrow-up-circle' : 'arrow-down-circle'} className="w-4 h-4"></i>
-                            </div>
-                            <div>
-                              <div className="font-semibold text-xs">{t.title}</div>
-                              <div className="text-[10px] text-slate-400">{t.category} • <span className="text-pureBlue font-medium">{t.wallet || 'លុយសុទ្ធ'}</span> • {t.date}</div>
-                            </div>
+          {/* ផ្នែកខាងក្រោម (Scrollable Body) កន្លែងដែលទិន្នន័យអាចអូសឡើងចុះបានដាច់ដោយឡែក */}
+          <div className="flex-1 overflow-y-auto px-3 pb-24 space-y-3">
+            {activeTab === 'home' && (
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                <div className="p-3 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 font-bold text-xs flex justify-between">
+                  <span>ប្រវត្តិប្រតិបត្តិការ</span>
+                  <span className="text-[10px] text-slate-400 font-normal">({finalDisplayTransactions.length} ប្រតិបត្តិការ)</span>
+                </div>
+                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {finalDisplayTransactions.length === 0 ? (
+                    <div className="p-6 text-center text-slate-400 text-xs">មិនមានទិន្នន័យក្នុងកំឡុងពេលនេះឡើយ</div>
+                  ) : (
+                    finalDisplayTransactions.map((t) => (
+                      <div key={t.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-1.5 rounded-lg ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400'}`}>
+                            <i data-lucide={t.type === 'income' ? 'arrow-up-circle' : 'arrow-down-circle'} className="w-4 h-4"></i>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`font-bold text-xs ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
-                              {t.type === 'income' ? '+' : '-'}{formatMoney(t.amount)}
-                            </span>
-                            <button onClick={() => handleDelete(t.id)} className="text-slate-300 hover:text-rose-600 transition">
-                              <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
-                            </button>
+                          <div>
+                            <div className="font-semibold text-xs">{t.title}</div>
+                            <div className="text-[10px] text-slate-400">{t.category} • <span className="text-pureBlue font-medium">{t.wallet || 'លុយសុទ្ធ'}</span> • {t.date}</div>
                           </div>
                         </div>
-                      ))
-                    )}
-                  </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`font-bold text-xs ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
+                            {t.type === 'income' ? '+' : '-'}{formatMoney(t.amount)}
+                          </span>
+                          <button onClick={() => handleDelete(t.id)} className="text-slate-300 hover:text-rose-600 transition">
+                            <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-
               </div>
             )}
 
             {activeTab === 'analytics' && (
-              <div className="space-y-3">
+              <div className="space-y-3 pt-2">
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xs font-bold">ការបែងចែកចំណាយតាមប្រភេទ</h3>
@@ -695,7 +697,7 @@
             )}
 
             {activeTab === 'tools' && (
-              <div className="space-y-3">
+              <div className="space-y-3 pt-2">
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <i data-lucide={darkMode ? "moon" : "sun"} className="w-4 h-4 text-pureBlue"></i>
@@ -738,7 +740,6 @@
                   </div>
                 </div>
 
-                {/* មុខងារចុះឈ្មោះ និងបើក/បិទ ស្កែនមុខ/ក្រយៅដៃ ក្នុង Tab ឧបករណ៍ (Tools) */}
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <i data-lucide="scan-face" className="w-4 h-4 text-pureBlue"></i>
@@ -787,9 +788,9 @@
                 </div>
               </div>
             )}
-
           </div>
 
+          {/* Navigation Bar ខាងក្រោម */}
           <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-6 py-2 pb-6 flex justify-between items-center shadow-lg z-50">
             <button 
               onClick={() => setActiveTab('home')} 
