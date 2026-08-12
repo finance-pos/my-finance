@@ -4,7 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>កម្មវិធីគ្រប់គ្រងហិរញ្ញវត្ថុ</title>
+
+  <!-- ==================== APPLE & MOBILE HOME SCREEN ICONS ==================== -->
+  <!-- ដាក់ Link រូបភាព icon.png របស់អ្នកត្រង់នេះ -->
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2845/2845831.png">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2845/2845831.png">
   
+  <!-- កំណត់ឱ្យវាដើរដូច App ពេញអេក្រង់ (Full Screen App) ពេល Save ទៅ Home Screen -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ហិរញ្ញវត្ថុ">
+  <meta name="theme-color" content="#1D4ED8">
+
   <!-- Font ខ្មែរ Kantumruy Pro -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,7 +51,7 @@
     const { useState, useEffect, useRef } = React;
 
     // ⚠️ ដាក់ Web App URL របស់ Google Apps Script ត្រង់នេះ ⚠️
-    const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbygQbXEB-856p-WG2A6YADv7lRA5jHzcSh2eIFK3lipMmif_4dvC2_YMawaK7zncI21XA/exec";
+    const GOOGLE_SHEET_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
     const EXCHANGE_RATE = 4100;
 
     const CATEGORIES = [
@@ -54,18 +65,14 @@
       const [loading, setLoading] = useState(false);
       const [syncing, setSyncing] = useState(false);
       
-      // Tab Navigation State
       const [activeTab, setActiveTab] = useState('home');
-
-      // Filter States (Month Filter - 'thisMonth' ជា Default)
-      const [timeFilter, setTimeFilter] = useState('thisMonth'); // 'thisMonth', 'lastMonth', 'all'
+      const [timeFilter, setTimeFilter] = useState('thisMonth');
       const [search, setSearch] = useState('');
       const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('ទាំងអស់');
       const [currency, setCurrency] = useState('USD');
       const [budgetLimit, setBudgetLimit] = useState(() => localStorage.getItem('budgetLimit') || 500);
       const [tempBudget, setTempBudget] = useState(budgetLimit);
 
-      // Form States
       const [title, setTitle] = useState('');
       const [amount, setAmount] = useState('');
       const [formCurrency, setFormCurrency] = useState('USD');
@@ -76,7 +83,6 @@
       const chartRef = useRef(null);
       const chartInstance = useRef(null);
 
-      // Fetch Data
       const fetchData = async () => {
         if (!GOOGLE_SHEET_URL || GOOGLE_SHEET_URL.includes("YOUR_GOOGLE")) return;
         setSyncing(true);
@@ -96,7 +102,6 @@
         if (window.lucide) window.lucide.createIcons();
       }, [transactions, showForm, activeTab, currency, selectedCategoryFilter, timeFilter, syncing]);
 
-      // បន្ថែមប្រតិបត្តិការ
       const handleAddTransaction = async (e) => {
         e.preventDefault();
         if (!title || !amount) return;
@@ -130,7 +135,6 @@
         setTitle(''); setAmount(''); setShowForm(false); setLoading(false);
       };
 
-      // លុបទិន្នន័យ
       const handleDelete = async (id) => {
         setTransactions(transactions.filter(t => t.id !== id));
         if (GOOGLE_SHEET_URL && !GOOGLE_SHEET_URL.includes("YOUR_GOOGLE")) {
@@ -145,14 +149,12 @@
         }
       };
 
-      // Logic ចម្រោះទិន្នន័យតាម ខែ (This Month / Last Month / All)
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
 
       const dateFilteredTransactions = transactions.filter(t => {
         if (timeFilter === 'all') return true;
-        
         const txDate = new Date(t.date);
         const txYear = txDate.getFullYear();
         const txMonth = txDate.getMonth();
@@ -170,7 +172,6 @@
         return true;
       });
 
-      // គណនាសរុប
       const totalIncomeUSD = dateFilteredTransactions.filter(t => t.type === 'income').reduce((a, c) => a + c.amount, 0);
       const totalExpenseUSD = dateFilteredTransactions.filter(t => t.type === 'expense').reduce((a, c) => a + c.amount, 0);
       const balanceUSD = totalIncomeUSD - totalExpenseUSD;
@@ -193,7 +194,6 @@
         a.click();
       };
 
-      // Chart Display
       useEffect(() => {
         if (activeTab !== 'analytics' || !chartRef.current) return;
         const expenses = dateFilteredTransactions.filter(t => t.type === 'expense');
@@ -216,7 +216,6 @@
         });
       }, [dateFilteredTransactions, activeTab]);
 
-      // Filter Search & Category
       const finalDisplayTransactions = dateFilteredTransactions.filter(t => {
         const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) || 
                               t.category.toLowerCase().includes(search.toLowerCase());
@@ -229,17 +228,11 @@
 
       return (
         <div className="w-full max-w-md mx-auto min-h-screen flex flex-col justify-between">
-          
           <div className="p-3 space-y-3">
 
-            {/* ==================== 1. ទំព័រដើម (HOME TAB) ==================== */}
             {activeTab === 'home' && (
               <div className="space-y-3">
-                
-                {/* កាតបង្ហាញលុយធំ (មាន Dropdown ជ្រើសរើសខែ នៅខាងក្នុង) */}
                 <div className="bg-pureBlue text-white rounded-3xl p-5 shadow-lg space-y-4 relative">
-                  
-                  {/* របារឧបករណ៍ខាងលើក្នុងកាត (Dropdown ខែ + ប៊ូតុង Refresh) */}
                   <div className="flex justify-between items-center">
                     <select 
                       value={timeFilter} 
@@ -251,16 +244,11 @@
                       <option value="all" className="text-slate-800">🌐 ទាំងអស់</option>
                     </select>
 
-                    <button 
-                      onClick={fetchData} 
-                      className="text-blue-200 hover:text-white p-1 transition"
-                      title="Sync ទិន្នន័យ"
-                    >
+                    <button onClick={fetchData} className="text-blue-200 hover:text-white p-1 transition" title="Sync ទិន្នន័យ">
                       <i data-lucide="refresh-cw" className={`w-4 h-4 ${syncing ? 'animate-spin text-white' : ''}`}></i>
                     </button>
                   </div>
 
-                  {/* ចំនួនទឹកប្រាក់សរុប */}
                   <div className="text-center space-y-1 pt-1">
                     <span className="text-[11px] text-blue-200 font-light">
                       {timeFilter === 'thisMonth' ? 'ប្រាក់នៅសល់ (ខែនេះ)' : timeFilter === 'lastMonth' ? 'ប្រាក់នៅសល់ (ខែមុន)' : 'ប្រាក់នៅសល់សរុប'}
@@ -268,7 +256,6 @@
                     <div className="text-3xl font-extrabold">{formatMoney(balanceUSD)}</div>
                   </div>
 
-                  {/* ចំណូល និង ចំណាយ */}
                   <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-blue-400/30">
                     <div className="bg-white/10 p-2.5 rounded-2xl flex items-center gap-2">
                       <i data-lucide="arrow-up-circle" className="w-5 h-5 text-emerald-300"></i>
@@ -288,7 +275,6 @@
                   </div>
                 </div>
 
-                {/* ប៊ូតុងបើក Form បញ្ចូលទិន្នន័យ */}
                 <button 
                   onClick={() => setShowForm(!showForm)}
                   className="w-full bg-pureBlue text-white py-3 rounded-2xl text-xs font-semibold hover:bg-blue-800 transition shadow flex justify-center items-center gap-2"
@@ -297,7 +283,6 @@
                   {showForm ? 'បិទទម្រង់' : 'បន្ថែមចំណូល / ចំណាយ'}
                 </button>
 
-                {/* Form បញ្ចូលទិន្នន័យ */}
                 {showForm && (
                   <form onSubmit={handleAddTransaction} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 text-xs">
                     <div>
@@ -347,7 +332,6 @@
                   </form>
                 )}
 
-                {/* Search & Category Filter */}
                 <div className="flex gap-2">
                   <input 
                     type="text" value={search} onChange={(e) => setSearch(e.target.value)}
@@ -363,7 +347,6 @@
                   </select>
                 </div>
 
-                {/* បញ្ជីប្រវត្តិប្រតិបត្តិការ */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                   <div className="p-3 bg-slate-50 border-b border-slate-100 font-bold text-xs text-slate-700 flex justify-between">
                     <span>ប្រវត្តិប្រតិបត្តិការ</span>
@@ -401,7 +384,6 @@
               </div>
             )}
 
-            {/* ==================== 2. ទំព័រវិភាគ (ANALYTICS TAB) ==================== */}
             {activeTab === 'analytics' && (
               <div className="space-y-3">
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
@@ -452,7 +434,6 @@
               </div>
             )}
 
-            {/* ==================== 3. ទំព័រជម្រើស (TOOLS TAB) ==================== */}
             {activeTab === 'tools' && (
               <div className="space-y-3">
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
@@ -479,7 +460,6 @@
 
           </div>
 
-          {/* ==================== BOTTOM NAVIGATION BAR ==================== */}
           <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-slate-200 px-6 py-2 flex justify-between items-center shadow-lg z-50">
             <button 
               onClick={() => setActiveTab('home')} 
