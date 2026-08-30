@@ -80,24 +80,6 @@
 
     const WALLETS = ['លុយសុទ្ធ (Cash)', 'ABA Bank', 'ACLEDA Bank', 'ផ្សេងៗ'];
 
-    const SPLASH_SLIDES = [
-      {
-        title: "គ្រប់គ្រងហិរញ្ញវត្ថុងាយស្រួល",
-        description: "តាមដានចំណូល ចំណាយប្រចាំថ្ងៃរបស់អ្នកបានយ៉ាងឆាប់រហ័ស និងមានសុវត្ថិភាព។",
-        image: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80"
-      },
-      {
-        title: "វិភាគទិន្នន័យច្បាស់លាស់",
-        description: "ដឹងពីអត្រាការចំណាយតាមប្រភេទនីមួយៗតាមរយៈក្រាហ្វិក ដ៏ស្រស់ស្អាត។",
-        image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80"
-      },
-      {
-        title: "សុវត្ថិភាពខ្ពស់ និងរហ័ស",
-        description: "ទិន្នន័យត្រូវបានរក្សាទុកដោយសុវត្ថិភាព និងមានប្រព័ន្ធការពារកូដ PIN យ៉ាងរឹងមាំ។",
-        image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=600&q=80"
-      }
-    ];
-
     const triggerHaptic = () => {
       if (navigator.vibrate) {
         navigator.vibrate(12);
@@ -106,15 +88,14 @@
 
     function App() {
       const [showSplash, setShowSplash] = useState(true);
-      const [currentSlide, setCurrentSlide] = useState(0);
 
+      // កំណត់ម៉ោងឱ្យលោតចេញរូបភាព Splash មួយភ្លែត (ឧទាហរណ៍៖ ២វិនាទី ឬ ២០០០ មីលីវិនាទី) រួចចូលកម្មវិធីតែម្តង
       useEffect(() => {
-        if (!showSplash) return;
-        const timer = setInterval(() => {
-          setCurrentSlide((prev) => (prev < SPLASH_SLIDES.length - 1 ? prev + 1 : 0));
-        }, 4000);
-        return () => clearInterval(timer);
-      }, [showSplash]);
+        const timer = setTimeout(() => {
+          setShowSplash(false);
+        }, 2000);
+        return () => clearTimeout(timer);
+      }, []);
 
       const [savedPin, setSavedPin] = useState(() => localStorage.getItem('app_pin') || '');
       const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem('app_pin'));
@@ -548,61 +529,18 @@
         return matchesSearch && matchesCategory;
       });
 
+      // កន្លែងបង្ហាញ Splash Screen ថ្មី (លោតចេញរូបភាពមួយភ្លែតរួចចូលកម្មវិធីតែម្តង)
       if (showSplash) {
         return (
-          <div class="h-full flex flex-col justify-between p-6 bg-slate-900 text-white relative overflow-hidden">
-            <div class="absolute top-4 right-4 z-10">
-              <button 
-                onClick={() => { triggerHaptic(); setShowSplash(false); }}
-                class="bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2 rounded-full backdrop-blur transition-all">
-                រំលង
-              </button>
+          <div class="h-full w-full flex flex-col items-center justify-center bg-slate-900 text-white fixed inset-0 z-50">
+            <div class="w-40 h-40 rounded-2xl overflow-hidden shadow-2xl border border-slate-700 flex items-center justify-center animate-pulse">
+              <img 
+                src="https://lh3.googleusercontent.com/d/1yak4qUpNBbl-RFSSSd5ra8hz_Ladgztc" 
+                alt="Splash Logo" 
+                class="w-full h-full object-cover" 
+              />
             </div>
-
-            <div class="flex-1 flex flex-col items-center justify-center mt-6">
-              <div class="w-full max-w-xs h-72 rounded-2xl overflow-hidden shadow-2xl mb-8 border border-slate-700">
-                <img 
-                  src={SPLASH_SLIDES[currentSlide].image} 
-                  alt="Slide" 
-                  class="w-full h-full object-cover transition-all duration-500 transform hover:scale-105" 
-                />
-              </div>
-
-              <div class="text-center px-4">
-                <h1 class="text-2xl font-bold mb-3 text-white transition-all">
-                  {SPLASH_SLIDES[currentSlide].title}
-                </h1>
-                <p class="text-slate-400 text-sm leading-relaxed max-w-xs mx-auto">
-                  {SPLASH_SLIDES[currentSlide].description}
-                </p>
-              </div>
-
-              <div class="flex gap-2 mt-6">
-                {SPLASH_SLIDES.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => { triggerHaptic(); setCurrentSlide(idx); }}
-                    class={`h-2 rounded-full transition-all duration-300 ${currentSlide === idx ? 'w-8 bg-blue-500' : 'w-2 bg-slate-700'}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div class="w-full max-w-sm mx-auto mb-4">
-              <button
-                onClick={() => {
-                  triggerHaptic();
-                  if (currentSlide < SPLASH_SLIDES.length - 1) {
-                    setCurrentSlide(currentSlide + 1);
-                  } else {
-                    setShowSplash(false);
-                  }
-                }}
-                class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2">
-                <span>{currentSlide === SPLASH_SLIDES.length - 1 ? "ចាប់ផ្តើមប្រើប្រាស់" : "បន្តទៅមុខ"}</span>
-                <i data-lucide="arrow-right" class="w-5 h-5"></i>
-              </button>
-            </div>
+            <p class="text-slate-400 text-sm mt-4 font-medium tracking-wide">MY-FINANCE-PRO</p>
           </div>
         );
       }
@@ -663,7 +601,6 @@
                       <span>សមតុល្យសរុប</span>
                     </div>
 
-                    {/* កន្លែងកែសម្រួលទំហំឱ្យស្មើគ្នាល្អ (h-[30px]) */}
                     <div class="flex items-center gap-2">
                       <select 
                         value={timeFilter} 
