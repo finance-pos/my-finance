@@ -50,7 +50,6 @@
     .ios-scroll {
       -webkit-overflow-scrolling: touch;
     }
-    /* លាក់ Scrollbar សម្រាប់ Safari និង Chrome នៅលើ iOS និងគ្រប់ Browser ទាំងអស់ */
     ::-webkit-scrollbar {
       display: none !important;
       width: 0px !important;
@@ -61,12 +60,12 @@
       scrollbar-width: none !important;
     }
     
-    /* កំណត់ Margin/Padding មិនឱ្យបាំង Notch/Dynamic Island & Home Screen Bar របស់ iPhone */
+    /* កែប្រែ Safe Area ដើម្បីរុញ Menu ឡើងលើផុសផុតពី Home Bar របស់ iPhone */
     .pt-safe {
-      padding-top: env(safe-area-inset-top, 20px);
+      padding-top: max(20px, env(safe-area-inset-top, 20px));
     }
     .pb-safe {
-      padding-bottom: env(safe-area-inset-bottom, 20px);
+      padding-bottom: max(30px, env(safe-area-inset-bottom, 30px)) !important;
     }
   </style>
 </head>
@@ -593,8 +592,8 @@
       return (
         <div class="flex flex-col h-full max-w-md mx-auto bg-[#F8FAFC] dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800 relative shadow-2xl pt-safe">
           
-          {/* Main Content Body */}
-          <main class="flex-1 overflow-y-auto ios-scroll p-4 pb-32 space-y-4 no-scrollbar">
+          {/* Main Content Body - បង្កើន pb-40 ដើម្បីកុំឱ្យបាំងមេនូខាងក្រោម */}
+          <main class="flex-1 overflow-y-auto ios-scroll p-4 pb-40 space-y-4 no-scrollbar">
             
             {/* Tab: Home */}
             {activeTab === 'home' && (
@@ -1022,8 +1021,8 @@
 
           </main>
 
-          {/* Bottom Navigation (បានបន្ថែម pb-safe សម្រាប់ iPhone 13 Pro Max) */}
-          <nav class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center px-4 pt-2 pb-safe fixed bottom-0 left-0 right-0 max-w-md mx-auto z-10 shadow-lg">
+          {/* Bottom Navigation (បានបន្ថែម pt-3 និង pb-safe ថ្មី ដើម្បីឱ្យមេនូផុសផុតបន្ទាត់ Home របស់ iPhone) */}
+          <nav class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center px-4 pt-3 pb-safe fixed bottom-0 left-0 right-0 max-w-md mx-auto z-10 shadow-lg">
             <button 
               onClick={() => { triggerHaptic(); setActiveTab('home'); }}
               class={`flex flex-col items-center gap-1 transition ${activeTab === 'home' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
@@ -1039,7 +1038,7 @@
             </button>
 
             {/* Middle Floating Add Button */}
-            <div class="relative -top-3">
+            <div class="relative -top-4">
               <button 
                 onClick={() => { triggerHaptic(); setShowForm(true); }}
                 class="w-12 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-600/30 transition transform active:scale-95">
