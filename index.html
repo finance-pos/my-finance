@@ -50,7 +50,6 @@
     .ios-scroll {
       -webkit-overflow-scrolling: touch;
     }
-    /* លាក់ Scrollbar សម្រាប់ Safari និង Chrome នៅលើ iOS និងគ្រប់ Browser ទាំងអស់ */
     ::-webkit-scrollbar {
       display: none !important;
       width: 0px !important;
@@ -60,9 +59,16 @@
       -ms-overflow-style: none !important;
       scrollbar-width: none !important;
     }
+    /* Safe Area Padding សម្រាប់ iPhone Notch & Dynamic Island */
+    .safe-top {
+      padding-top: env(safe-area-inset-top, 20px);
+    }
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom, 20px);
+    }
   </style>
 </head>
-<body class="bg-[#F8FAFC] dark:bg-slate-900 font-sans h-screen text-slate-800 dark:text-slate-100 transition-colors duration-200 overflow-hidden">
+<body class="bg-[#F8FAFC] dark:bg-slate-900 font-sans h-[100dvh] text-slate-800 dark:text-slate-100 transition-colors duration-200 overflow-hidden">
 
   <div id="root" class="h-full"></div>
 
@@ -89,7 +95,6 @@
     function App() {
       const [showSplash, setShowSplash] = useState(true);
 
-      // កំណត់ម៉ោងឱ្យលោតចេញរូបភាព Splash មួយភ្លែត (ឧទាហរណ៍៖ ២វិនាទី ឬ ២០០០ មីលីវិនាទី) រួចចូលកម្មវិធីតែម្តង
       useEffect(() => {
         const timer = setTimeout(() => {
           setShowSplash(false);
@@ -281,7 +286,7 @@
           }
         } catch (err) {
           console.error(err);
-          setPinError('ການស្កែនមុខ/ក្រយៅដៃមិនជោគជ័យ');
+          setPinError('ការស្កែនមុខ/ក្រយៅដៃមិនជោគជ័យ');
         }
       };
 
@@ -529,7 +534,6 @@
         return matchesSearch && matchesCategory;
       });
 
-      // កន្លែងបង្ហាញ Splash Screen ថ្មី (លោតចេញរូបភាពមួយភ្លែតរួចចូលកម្មវិធីតែម្តង)
       if (showSplash) {
         return (
           <div class="h-full w-full flex flex-col items-center justify-center bg-slate-900 text-white fixed inset-0 z-50">
@@ -547,7 +551,7 @@
 
       if (isLocked) {
         return (
-          <div class="h-full flex flex-col items-center justify-center p-6 bg-slate-900 text-white">
+          <div class="h-full flex flex-col items-center justify-center p-6 bg-slate-900 text-white safe-top safe-bottom">
             <div class="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-full flex items-center justify-center mb-6">
               <i data-lucide="lock" class="w-8 h-8"></i>
             </div>
@@ -587,8 +591,8 @@
       return (
         <div class="flex flex-col h-full max-w-md mx-auto bg-[#F8FAFC] dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800 relative shadow-2xl">
           
-          {/* Main Content Body */}
-          <main class="flex-1 overflow-y-auto ios-scroll p-4 pb-24 space-y-4 no-scrollbar">
+          {/* Main Content Body - បន្ថែម safe-top ដើម្បីកុំឱ្យបាត់សមតុល្យលើ iPhone Notch/Dynamic Island */}
+          <main class="flex-1 overflow-y-auto ios-scroll p-4 safe-top pb-28 space-y-4 no-scrollbar">
             
             {/* Tab: Home */}
             {activeTab === 'home' && (
@@ -605,7 +609,7 @@
                       <select 
                         value={timeFilter} 
                         onChange={(e) => { triggerHaptic(); setTimeFilter(e.target.value); }}
-                        class="h-[20px] px-2.5 text-5px font-bold bg-white/10 hover:bg-white/30 rounded-lg transition text-white border-white/20 focus:outline-none text-center">
+                        class="h-[26px] px-2 text-xs font-bold bg-white/10 hover:bg-white/30 rounded-lg transition text-white border-white/20 focus:outline-none text-center">
                         <option value="all" class="bg-slate-900 text-white">ទាំងអស់</option>
                         <option value="thisMonth" class="bg-slate-900 text-white">ខែនេះ</option>
                         <option value="lastMonth" class="bg-slate-900 text-white">ខែមុន</option>
@@ -613,7 +617,7 @@
 
                       <button 
                         onClick={() => { triggerHaptic(); setCurrency(currency === 'USD' ? 'KHR' : 'USD'); }}
-                        class="h-[20px] px-3 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-lg transition text-white text-center flex items-center justify-center">
+                        class="h-[26px] px-3 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-lg transition text-white text-center flex items-center justify-center">
                         {currency}
                       </button>
                     </div>
@@ -689,7 +693,7 @@
                 <div class="space-y-2">
                   <div class="flex justify-between items-center">
                     <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ប្រវត្តិប្រតិបត្តិការ</h3>
-                    <span class="text-xs text-slate-400 font-medium">{finalDisplayTransactions.length} បេនប្រតិបត្តិការ</span>
+                    <span class="text-xs text-slate-400 font-medium">{finalDisplayTransactions.length} ប្រតិបត្តិការ</span>
                   </div>
 
                   {finalDisplayTransactions.length === 0 ? (
@@ -746,7 +750,7 @@
             {activeTab === 'analytics' && (
               <div class="space-y-4">
                 <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm">
-                  <h3 class="font-bold text-sm mb-4 text-slate-800 dark:text-slate-100">ការភាគរយនៃការចំណាយតាមប្រភេទ</h3>
+                  <h3 class="font-bold text-sm mb-4 text-slate-800 dark:text-slate-100">ភាគរយនៃការចំណាយតាមប្រភេទ</h3>
                   <div class="h-64 relative">
                     <canvas ref={chartRef}></canvas>
                   </div>
@@ -1016,8 +1020,8 @@
 
           </main>
 
-          {/* Bottom Navigation */}
-          <nav class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center px-4 py-2 fixed bottom-0 left-0 right-0 max-w-md mx-auto z-10 shadow-lg">
+          {/* Bottom Navigation - បន្ថែម safe-bottom ដើម្បីសម្រួលជាមួយ Home Bar លើ iOS */}
+          <nav class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center px-4 pt-2 pb-safe fixed bottom-0 left-0 right-0 max-w-md mx-auto z-10 shadow-lg safe-bottom">
             <button 
               onClick={() => { triggerHaptic(); setActiveTab('home'); }}
               class={`flex flex-col items-center gap-1 transition ${activeTab === 'home' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
@@ -1033,7 +1037,7 @@
             </button>
 
             {/* Middle Floating Add Button */}
-            <div class="relative -top-5">
+            <div class="relative -top-4">
               <button 
                 onClick={() => { triggerHaptic(); setShowForm(true); }}
                 class="w-12 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-600/30 transition transform active:scale-95">
@@ -1059,7 +1063,7 @@
           {/* Add Transaction Modal */}
           {showForm && (
             <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-              <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl safe-bottom">
                 <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
                   <h3 class="font-bold text-base text-slate-800 dark:text-slate-100">បន្ថែមប្រតិបត្តិការ</h3>
                   <button onClick={() => setShowForm(false)} class="text-slate-400 hover:text-slate-600">
