@@ -61,9 +61,12 @@
       scrollbar-width: none !important;
     }
     
-    /* កំណត់ Margin/Padding មិនឱ្យបាំង Notch/Dynamic Island របស់ iPhone 13 PM & 14 PM */
+    /* កំណត់ Margin/Padding មិនឱ្យបាំង Notch/Dynamic Island & Home Screen Bar របស់ iPhone */
     .pt-safe {
       padding-top: env(safe-area-inset-top, 20px);
+    }
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom, 20px);
     }
   </style>
 </head>
@@ -94,7 +97,6 @@
     function App() {
       const [showSplash, setShowSplash] = useState(true);
 
-      // កំណត់ម៉ោងឱ្យលោតចេញរូបភាព Splash មួយភ្លែត (ឧទាហរណ៍៖ ២វិនាទី ឬ ២០០០ មីលីវិនាទី) រួចចូលកម្មវិធីតែម្តង
       useEffect(() => {
         const timer = setTimeout(() => {
           setShowSplash(false);
@@ -534,7 +536,6 @@
         return matchesSearch && matchesCategory;
       });
 
-      // កន្លែងបង្ហាញ Splash Screen ថ្មី (លោតចេញរូបភាពមួយភ្លែតរួចចូលកម្មវិធីតែម្តង)
       if (showSplash) {
         return (
           <div class="h-full w-full flex flex-col items-center justify-center bg-slate-900 text-white fixed inset-0 z-50 pt-safe">
@@ -593,7 +594,7 @@
         <div class="flex flex-col h-full max-w-md mx-auto bg-[#F8FAFC] dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800 relative shadow-2xl pt-safe">
           
           {/* Main Content Body */}
-          <main class="flex-1 overflow-y-auto ios-scroll p-4 pb-24 space-y-4 no-scrollbar">
+          <main class="flex-1 overflow-y-auto ios-scroll p-4 pb-32 space-y-4 no-scrollbar">
             
             {/* Tab: Home */}
             {activeTab === 'home' && (
@@ -1021,8 +1022,8 @@
 
           </main>
 
-          {/* Bottom Navigation */}
-          <nav class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center px-4 py-2 fixed bottom-0 left-0 right-0 max-w-md mx-auto z-10 shadow-lg">
+          {/* Bottom Navigation (បានបន្ថែម pb-safe សម្រាប់ iPhone 13 Pro Max) */}
+          <nav class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center px-4 pt-2 pb-safe fixed bottom-0 left-0 right-0 max-w-md mx-auto z-10 shadow-lg">
             <button 
               onClick={() => { triggerHaptic(); setActiveTab('home'); }}
               class={`flex flex-col items-center gap-1 transition ${activeTab === 'home' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
@@ -1038,7 +1039,7 @@
             </button>
 
             {/* Middle Floating Add Button */}
-            <div class="relative -top-5">
+            <div class="relative -top-3">
               <button 
                 onClick={() => { triggerHaptic(); setShowForm(true); }}
                 class="w-12 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-600/30 transition transform active:scale-95">
