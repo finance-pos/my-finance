@@ -5,10 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>កម្មវិធីគ្រប់គ្រងហិរញ្ញវត្ថុ Pro</title>
 
-  <!-- PWA Web App Manifest -->
   <link rel="manifest" href="manifest.json">
 
-  <!-- Mobile & iOS Home Screen Icons -->
   <link rel="icon" type="image/png" href="iconfinances.png">
   <link rel="apple-touch-icon" href="iconfinances.png">
   
@@ -16,14 +14,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="ហិរញ្ញវត្ថុ">
-  <meta name="theme-color" content="#1D4ED8">
+  <meta name="theme-color" content="#0F172A">
 
-  <!-- Font ខ្មែរ Kantumruy Pro -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -37,7 +33,6 @@
     }
   </script>
 
-  <!-- React, Babel & Libraries CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin="anonymous"></script>
@@ -46,15 +41,28 @@
 
   <style>
     body {
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
-      overflow: hidden; /* បិទការអូសពេញ body ដើម្បីឱ្យមានផ្នែក scroll ដាច់ដោយឡែក */
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+    .ios-scroll {
+      -webkit-overflow-scrolling: touch;
+    }
+    /* លាក់ Scrollbar សម្រាប់ Safari និង Chrome នៅលើ iOS និងគ្រប់ Browser ទាំងអស់ */
+    ::-webkit-scrollbar {
+      display: none !important;
+      width: 0px !important;
+      background: transparent !important;
+    }
+    body, html, * {
+      -ms-overflow-style: none !important;
+      scrollbar-width: none !important;
     }
   </style>
 </head>
-<body class="bg-slate-100 dark:bg-slate-900 font-sans h-screen text-slate-800 dark:text-slate-100 transition-colors duration-200">
+<body class="bg-[#F8FAFC] dark:bg-slate-900 font-sans h-screen text-slate-800 dark:text-slate-100 transition-colors duration-200 overflow-hidden">
 
   <div id="root" class="h-full"></div>
 
@@ -90,6 +98,12 @@
       }
     ];
 
+    const triggerHaptic = () => {
+      if (navigator.vibrate) {
+        navigator.vibrate(12);
+      }
+    };
+
     function App() {
       const [showSplash, setShowSplash] = useState(true);
       const [currentSlide, setCurrentSlide] = useState(0);
@@ -110,7 +124,35 @@
       const [isBiometricEnabled, setIsBiometricEnabled] = useState(() => localStorage.getItem('biometric_enabled') === 'true');
 
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem('dark_mode') === 'true');
-      const [transactions, setTransactions] = useState([]);
+      const [transactions, setTransactions] = useState(() => {
+        const local = localStorage.getItem('local_transactions');
+        return local ? JSON.parse(local) : [];
+      });
+
+      const [categoryBudgets, setCategoryBudgets] = useState(() => {
+        const local = localStorage.getItem('category_budgets');
+        return local ? JSON.parse(local) : { 'ម្ហូបអាហារ': 150, 'ការកម្សាន្ត': 50 };
+      });
+
+      const [savingsGoals, setSavingsGoals] = useState(() => {
+        const local = localStorage.getItem('savings_goals');
+        return local ? JSON.parse(local) : [
+          { id: 1, title: 'ទិញទូរស័ព្ទថ្មី', target: 800, current: 350 }
+        ];
+      });
+      const [goalTitle, setGoalTitle] = useState('');
+      const [goalTarget, setGoalTarget] = useState('');
+
+      const [reminders, setReminders] = useState(() => {
+        const local = localStorage.getItem('bill_reminders');
+        return local ? JSON.parse(local) : [
+          { id: 1, title: 'ថ្លៃអ៊ីនធឺណិត', amount: 25, dueDate: '2026-03-05', category: 'ផ្ទះ/ទឹកភ្លើង' }
+        ];
+      });
+      const [billTitle, setBillTitle] = useState('');
+      const [billAmount, setBillAmount] = useState('');
+      const [billDueDate, setBillDueDate] = useState('');
+
       const [loading, setLoading] = useState(false);
       const [syncing, setSyncing] = useState(false);
       
@@ -128,10 +170,29 @@
       const [type, setType] = useState('expense');
       const [category, setCategory] = useState(CATEGORIES[0]);
       const [wallet, setWallet] = useState(WALLETS[0]);
+      const [receiptImage, setReceiptImage] = useState(null);
+      const [selectedReceipt, setSelectedReceipt] = useState(null);
       const [showForm, setShowForm] = useState(false);
 
       const chartRef = useRef(null);
       const chartInstance = useRef(null);
+      const fileInputRef = useRef(null);
+
+      useEffect(() => {
+        localStorage.setItem('local_transactions', JSON.stringify(transactions));
+      }, [transactions]);
+
+      useEffect(() => {
+        localStorage.setItem('category_budgets', JSON.stringify(categoryBudgets));
+      }, [categoryBudgets]);
+
+      useEffect(() => {
+        localStorage.setItem('savings_goals', JSON.stringify(savingsGoals));
+      }, [savingsGoals]);
+
+      useEffect(() => {
+        localStorage.setItem('bill_reminders', JSON.stringify(reminders));
+      }, [reminders]);
 
       useEffect(() => {
         if (darkMode) {
@@ -143,6 +204,7 @@
       }, [darkMode]);
 
       const fetchData = async () => {
+        triggerHaptic();
         if (!GOOGLE_SHEET_URL || GOOGLE_SHEET_URL.includes("YOUR_GOOGLE")) return;
         setSyncing(true);
         try {
@@ -158,11 +220,14 @@
       useEffect(() => { fetchData(); }, []);
 
       useEffect(() => {
-        if (window.lucide && !showSplash) window.lucide.createIcons();
-      }, [transactions, showForm, activeTab, currency, selectedCategoryFilter, timeFilter, syncing, isLocked, darkMode, showSplash, isBiometricEnabled]);
+        if (window.lucide && !showSplash) {
+          setTimeout(() => window.lucide.createIcons(), 50);
+        }
+      }, [transactions, showForm, activeTab, currency, selectedCategoryFilter, timeFilter, syncing, isLocked, darkMode, showSplash, isBiometricEnabled, selectedReceipt, savingsGoals, reminders, categoryBudgets]);
 
       const handleUnlock = (e) => {
         e.preventDefault();
+        triggerHaptic();
         if (pinInput === savedPin) {
           setIsLocked(false);
           setPinError('');
@@ -174,6 +239,7 @@
       };
 
       const handleRegisterBiometric = async () => {
+        triggerHaptic();
         try {
           if (!window.PublicKeyCredential) {
             alert('Browser របស់អ្នកមិនគាំទ្រមុខងារ Face ID / ក្រយៅដៃទេ។');
@@ -213,6 +279,7 @@
       };
 
       const handleBiometricAuth = async () => {
+        triggerHaptic();
         try {
           if (!window.PublicKeyCredential) return;
 
@@ -233,11 +300,12 @@
           }
         } catch (err) {
           console.error(err);
-          setPinError('ការស្កែនមុខ/ក្រយៅដៃមិនជោគជ័យ');
+          setPinError('ການស្កែនមុខ/ក្រយៅដៃមិនជោគជ័យ');
         }
       };
 
       const handleSetPin = (newPin) => {
+        triggerHaptic();
         setSavedPin(newPin);
         if (newPin) {
           localStorage.setItem('app_pin', newPin);
@@ -247,8 +315,20 @@
         }
       };
 
+      const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setReceiptImage(reader.result);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
       const handleAddTransaction = async (e) => {
         e.preventDefault();
+        triggerHaptic();
         if (!title || !amount) return;
 
         setLoading(true);
@@ -262,6 +342,7 @@
           type,
           category,
           wallet,
+          receipt: receiptImage,
           date: new Date().toISOString().split('T')[0]
         };
 
@@ -278,10 +359,11 @@
           } catch (err) { console.error("Save Error:", err); }
         }
 
-        setTitle(''); setAmount(''); setShowForm(false); setLoading(false);
+        setTitle(''); setAmount(''); setReceiptImage(null); setShowForm(false); setLoading(false);
       };
 
       const handleDelete = async (id) => {
+        triggerHaptic();
         setTransactions(transactions.filter(t => t.id !== id));
         if (GOOGLE_SHEET_URL && !GOOGLE_SHEET_URL.includes("YOUR_GOOGLE")) {
           try {
@@ -292,6 +374,91 @@
               body: JSON.stringify({ action: "delete", id }),
             });
           } catch (err) { console.error("Delete Error:", err); }
+        }
+      };
+
+      const handleAddGoal = (e) => {
+        e.preventDefault();
+        if (!goalTitle || !goalTarget) return;
+        const newGoal = {
+          id: Date.now(),
+          title: goalTitle,
+          target: parseFloat(goalTarget),
+          current: 0
+        };
+        setSavingsGoals([...savingsGoals, newGoal]);
+        setGoalTitle('');
+        setGoalTarget('');
+      };
+
+      const handleDepositGoal = (id) => {
+        const amountStr = prompt('បញ្ចូលចំនួនទឹកប្រាក់ដែលត្រូវសន្សំថែម ($)៖');
+        const depositVal = parseFloat(amountStr);
+        if (depositVal && depositVal > 0) {
+          setSavingsGoals(savingsGoals.map(g => g.id === id ? { ...g, current: g.current + depositVal } : g));
+          triggerHaptic();
+        }
+      };
+
+      const handleAddBill = (e) => {
+        e.preventDefault();
+        if (!billTitle || !billAmount || !billDueDate) return;
+        const newBill = {
+          id: Date.now(),
+          title: billTitle,
+          amount: parseFloat(billAmount),
+          dueDate: billDueDate,
+          category: 'ផ្ទះ/ទឹកភ្លើង'
+        };
+        setReminders([...reminders, newBill]);
+        setBillTitle('');
+        setBillAmount('');
+        setBillDueDate('');
+      };
+
+      const handlePayBill = (bill) => {
+        triggerHaptic();
+        const newTx = {
+          id: Date.now(),
+          title: `បង់៖ ${bill.title}`,
+          amount: bill.amount,
+          type: 'expense',
+          category: bill.category || 'ផ្ទះ/ទឹកភ្លើង',
+          wallet: WALLETS[0],
+          date: new Date().toISOString().split('T')[0]
+        };
+        setTransactions([newTx, ...transactions]);
+        setReminders(reminders.filter(r => r.id !== bill.id));
+        alert(`បានទូទាត់ «${bill.title}» រួចរាល់!`);
+      };
+
+      const handleExportJSON = () => {
+        triggerHaptic();
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `finance_backup_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      };
+
+      const handleImportJSON = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            try {
+              const importedData = JSON.parse(event.target.result);
+              if (Array.isArray(importedData)) {
+                setTransactions(importedData);
+                alert('បាននាំចូលទិន្នន័យជោគជ័យ!');
+              }
+            } catch (err) {
+              alert('ឯកសារ JSON មិនត្រឹមត្រូវទេ!');
+            }
+          };
+          reader.readAsText(file);
         }
       };
 
@@ -322,12 +489,19 @@
       const totalExpenseUSD = dateFilteredTransactions.filter(t => t.type === 'expense').reduce((a, c) => a + c.amount, 0);
       const balanceUSD = totalIncomeUSD - totalExpenseUSD;
 
+      const walletBalances = WALLETS.map(w => {
+        const wIncome = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.type === 'income').reduce((a, c) => a + c.amount, 0);
+        const wExpense = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.type === 'expense').reduce((a, c) => a + c.amount, 0);
+        return { name: w, balance: wIncome - wExpense };
+      });
+
       const formatMoney = (valInUSD) => {
         if (currency === 'KHR') return (valInUSD * EXCHANGE_RATE).toLocaleString('km-KH') + ' ៛';
         return '$' + valInUSD.toFixed(2);
       };
 
       const exportToCSV = () => {
+        triggerHaptic();
         let csv = "ID,Title,Amount(USD),Type,Category,Wallet,Date\n";
         dateFilteredTransactions.forEach(t => {
           csv += `"${t.id}","${t.title}","${t.amount}","${t.type}","${t.category}","${t.wallet || 'លុយសុទ្ធ'}","${t.date}"\n`;
@@ -341,6 +515,7 @@
       };
 
       const exportToPDF = () => {
+        triggerHaptic();
         window.print();
       };
 
@@ -373,59 +548,59 @@
         return matchesSearch && matchesCategory;
       });
 
-      const isOverBudget = totalExpenseUSD > budgetLimit;
-      const isNearBudget = totalExpenseUSD >= (budgetLimit * 0.8) && !isOverBudget;
-      const budgetPercent = Math.min((totalExpenseUSD / budgetLimit) * 100, 100);
-
       if (showSplash) {
         return (
-          <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white flex flex-col justify-between p-6 z-50 max-w-md mx-auto">
-            <div className="flex justify-between items-center pt-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-pureBlue flex items-center justify-center shadow-lg shadow-blue-600/30">
-                  <i data-lucide="wallet" className="w-4 h-4 text-white"></i>
-                </div>
-                <span className="text-xs font-bold tracking-wider text-slate-300">Finance Pro</span>
-              </div>
+          <div class="h-full flex flex-col justify-between p-6 bg-slate-900 text-white relative overflow-hidden">
+            <div class="absolute top-4 right-4 z-10">
               <button 
-                onClick={() => setShowSplash(false)}
-                className="text-slate-300 hover:text-white text-xs font-medium px-4 py-1.5 bg-white/10 hover:bg-white/25 backdrop-blur-md rounded-full transition border border-white/10"
-              >
-                រំលង (Skip)
+                onClick={() => { triggerHaptic(); setShowSplash(false); }}
+                class="bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2 rounded-full backdrop-blur transition-all">
+                រំលង
               </button>
             </div>
 
-            <div className="flex flex-col items-center text-center space-y-6 my-auto">
-              <div className="w-full h-72 rounded-3xl overflow-hidden shadow-2xl relative border border-white/10 bg-slate-800 group">
+            <div class="flex-1 flex flex-col items-center justify-center mt-6">
+              <div class="w-full max-w-xs h-72 rounded-2xl overflow-hidden shadow-2xl mb-8 border border-slate-700">
                 <img 
                   src={SPLASH_SLIDES[currentSlide].image} 
-                  alt="Splash" 
-                  className="w-full h-full object-cover transition-all duration-700 ease-in-out transform hover:scale-105"
+                  alt="Slide" 
+                  class="w-full h-full object-cover transition-all duration-500 transform hover:scale-105" 
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
               </div>
 
-              <div className="space-y-3 px-2">
-                <h2 className="text-xl font-bold text-blue-400 tracking-wide">{SPLASH_SLIDES[currentSlide].title}</h2>
-                <p className="text-xs text-slate-300 leading-relaxed max-w-xs mx-auto">{SPLASH_SLIDES[currentSlide].description}</p>
+              <div class="text-center px-4">
+                <h1 class="text-2xl font-bold mb-3 text-white transition-all">
+                  {SPLASH_SLIDES[currentSlide].title}
+                </h1>
+                <p class="text-slate-400 text-sm leading-relaxed max-w-xs mx-auto">
+                  {SPLASH_SLIDES[currentSlide].description}
+                </p>
               </div>
 
-              <div className="flex gap-2 pt-2">
+              <div class="flex gap-2 mt-6">
                 {SPLASH_SLIDES.map((_, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`h-2 rounded-full transition-all duration-500 ${currentSlide === idx ? 'w-8 bg-blue-500' : 'w-2 bg-slate-700'}`}
-                  ></div>
+                  <button
+                    key={idx}
+                    onClick={() => { triggerHaptic(); setCurrentSlide(idx); }}
+                    class={`h-2 rounded-full transition-all duration-300 ${currentSlide === idx ? 'w-8 bg-blue-500' : 'w-2 bg-slate-700'}`}
+                  />
                 ))}
               </div>
             </div>
 
-            <div className="pb-4">
-              <button 
-                onClick={() => setShowSplash(false)}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 py-3.5 rounded-2xl font-bold text-xs shadow-lg shadow-blue-600/30 transition transform active:scale-95"
-              >
-                ចាប់ផ្តើមប្រើប្រាស់
+            <div class="w-full max-w-sm mx-auto mb-4">
+              <button
+                onClick={() => {
+                  triggerHaptic();
+                  if (currentSlide < SPLASH_SLIDES.length - 1) {
+                    setCurrentSlide(currentSlide + 1);
+                  } else {
+                    setShowSplash(false);
+                  }
+                }}
+                class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2">
+                <span>{currentSlide === SPLASH_SLIDES.length - 1 ? "ចាប់ផ្តើមប្រើប្រាស់" : "បន្តទៅមុខ"}</span>
+                <i data-lucide="arrow-right" class="w-5 h-5"></i>
               </button>
             </div>
           </div>
@@ -434,395 +609,651 @@
 
       if (isLocked) {
         return (
-          <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900 text-white">
-            <div className="bg-slate-800 p-6 rounded-3xl w-full max-w-xs shadow-2xl border border-slate-700 text-center space-y-4">
-              <div className="w-12 h-12 bg-pureBlue/20 text-pureBlue rounded-full flex items-center justify-center mx-auto">
-                <i data-lucide="lock" className="w-6 h-6"></i>
-              </div>
-              <h2 className="text-base font-bold">បញ្ចូលលេខកូដសម្ងាត់</h2>
-              <form onSubmit={handleUnlock} className="space-y-3">
-                <input 
-                  type="password" maxLength="4" value={pinInput} onChange={(e) => setPinInput(e.target.value)}
-                  placeholder="• • • •" className="w-full text-center text-2xl tracking-widest p-2 bg-slate-700 border border-slate-600 rounded-xl outline-none focus:border-pureBlue" autoFocus
-                />
-                {pinError && <div className="text-rose-400 text-xs">{pinError}</div>}
-                <button type="submit" className="w-full bg-pureBlue py-2.5 rounded-xl font-bold text-xs shadow hover:bg-blue-700 transition">
-                  ដោះកូដ
-                </button>
-              </form>
-
-              {isBiometricEnabled && (
-                <button 
-                  type="button"
-                  onClick={handleBiometricAuth}
-                  className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 py-2.5 rounded-xl font-bold text-xs text-white transition mt-2 border border-slate-600"
-                >
-                  <i data-lucide="scan-face" className="w-4 h-4 text-blue-400"></i> ស្កែនមុខ / ក្រយៅដៃ
-                </button>
-              )}
+          <div class="h-full flex flex-col items-center justify-center p-6 bg-slate-900 text-white">
+            <div class="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-full flex items-center justify-center mb-6">
+              <i data-lucide="lock" class="w-8 h-8"></i>
             </div>
+            <h2 class="text-2xl font-bold mb-2">បញ្ចូលលេខកូដ PIN</h2>
+            <p class="text-slate-400 text-sm mb-6">ដើម្បីចូលប្រើប្រាស់កម្មវិធី</p>
+
+            <form onSubmit={handleUnlock} class="w-full max-w-xs flex flex-col items-center">
+              <input 
+                type="password" 
+                maxLength="6"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                placeholder="••••"
+                class="w-full text-center text-3xl tracking-widest bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+
+              {pinError && <p class="text-red-400 text-xs mb-4">{pinError}</p>}
+
+              <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 font-semibold py-3 rounded-xl transition shadow-lg">
+                បើកសោ
+              </button>
+            </form>
+
+            {isBiometricEnabled && (
+              <button
+                onClick={handleBiometricAuth}
+                class="mt-6 flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm py-2 px-4 rounded-lg bg-slate-800/50">
+                <i data-lucide="scan-face" class="w-5 h-5"></i>
+                <span>ប្រើប្រាស់ Face ID / ក្រយៅដៃ</span>
+              </button>
+            )}
           </div>
         );
       }
 
       return (
-        <div className="w-full max-w-md mx-auto h-full flex flex-col justify-between overflow-hidden relative">
+        <div class="flex flex-col h-full max-w-md mx-auto bg-[#F8FAFC] dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800 relative shadow-2xl">
           
-          {/* ផ្នែកខាងលើ (Fixed Header) ដែលនៅស្ងៀមនឹងថ្កល់មិនរំកិលតាម */}
-          <div className="p-3 space-y-3 flex-shrink-0 bg-slate-100 dark:bg-slate-900 z-10">
-            {isOverBudget && (
-              <div className="bg-rose-500 text-white text-xs p-3 rounded-2xl flex items-center gap-2 shadow-md animate-pulse">
-                <i data-lucide="alert-triangle" className="w-5 h-5 flex-shrink-0"></i>
-                <div>
-                  <strong>ប្រកាសអាសន្ន!</strong> អ្នកបានចំណាយលើសពិដានថវិកាប្រចាំខែ (${budgetLimit}) ហើយ!
-                </div>
-              </div>
-            )}
-
-            {isNearBudget && (
-              <div className="bg-amber-500 text-white text-xs p-3 rounded-2xl flex items-center gap-2 shadow-md">
-                <i data-lucide="alert-circle" className="w-5 h-5 flex-shrink-0"></i>
-                <div>
-                  <strong>ព្រមាន!</strong> អ្នកបានចំណាយអស់ ៨០% នៃពិដានថវិកាហើយ!
-                </div>
-              </div>
-            )}
-
+          {/* Main Content Body */}
+          <main class="flex-1 overflow-y-auto ios-scroll p-4 pb-24 space-y-4 no-scrollbar">
+            
+            {/* Tab: Home */}
             {activeTab === 'home' && (
-              <div className="space-y-3">
-                <div className="bg-pureBlue text-white rounded-3xl p-5 shadow-lg space-y-4 relative">
-                  <div className="flex justify-between items-center">
-                    <select 
-                      value={timeFilter} 
-                      onChange={(e) => setTimeFilter(e.target.value)}
-                      className="bg-white/15 text-white border border-white/20 rounded-xl px-2.5 py-1 text-[11px] font-semibold outline-none backdrop-blur-md cursor-pointer hover:bg-white/25 transition"
-                    >
-                      <option value="thisMonth" className="text-slate-800">📅 ខែនេះ</option>
-                      <option value="lastMonth" className="text-slate-800">⏮️ ខែមុន</option>
-                      <option value="all" className="text-slate-800">🌐 ទាំងអស់</option>
-                    </select>
+              <>
+                {/* Dashboard Card */}
+                <div class="bg-gradient-to-br from-[#0F172A] via-[#1E1B4B] to-[#311042] text-white p-5 rounded-3xl shadow-xl space-y-4">
+                  <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-1.5 text-xs text-slate-300">
+                      <i data-lucide="shield-check" class="w-4 h-4 text-blue-400"></i>
+                      <span>សមតុល្យសរុប</span>
+                    </div>
 
-                    <button onClick={fetchData} className="text-blue-200 hover:text-white p-1 transition" title="Sync ទិន្នន័យ">
-                      <i data-lucide="refresh-cw" className={`w-4 h-4 ${syncing ? 'animate-spin text-white' : ''}`}></i>
-                    </button>
+                    {/* កន្លែងកែសម្រួលទំហំឱ្យស្មើគ្នាល្អ (h-[30px]) */}
+                    <div class="flex items-center gap-2">
+                      <select 
+                        value={timeFilter} 
+                        onChange={(e) => { triggerHaptic(); setTimeFilter(e.target.value); }}
+                        class="h-[20px] px-2.5 text-5px font-bold bg-white/10 hover:bg-white/30 rounded-lg transition text-white border-white/20 focus:outline-none text-center">
+                        <option value="all" class="bg-slate-900 text-white">ទាំងអស់</option>
+                        <option value="thisMonth" class="bg-slate-900 text-white">ខែនេះ</option>
+                        <option value="lastMonth" class="bg-slate-900 text-white">ខែមុន</option>
+                      </select>
+
+                      <button 
+                        onClick={() => { triggerHaptic(); setCurrency(currency === 'USD' ? 'KHR' : 'USD'); }}
+                        class="h-[20px] px-3 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-lg transition text-white text-center flex items-center justify-center">
+                        {currency}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="text-center space-y-1 pt-1">
-                    <span className="text-[11px] text-blue-200 font-light">
-                      {timeFilter === 'thisMonth' ? 'ប្រាក់នៅសល់ (ខែនេះ)' : timeFilter === 'lastMonth' ? 'ប្រាក់នៅសល់ (ខែមុន)' : 'ប្រាក់នៅសល់សរុប'}
-                    </span>
-                    <div className="text-3xl font-extrabold">{formatMoney(balanceUSD)}</div>
+                  <div>
+                    <h2 class="text-3xl font-extrabold tracking-tight mt-1">{formatMoney(balanceUSD)}</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">គណនីចម្បង • ប្រព័ន្ធគ្រប់គ្រងហិរញ្ញវត្ថុ</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-blue-400/30">
-                    <div className="bg-white/10 p-2.5 rounded-2xl flex items-center gap-2">
-                      <i data-lucide="arrow-up-circle" className="w-5 h-5 text-emerald-300"></i>
+                  <div class="grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
+                    <div class="bg-white/5 p-3 rounded-2xl flex items-center gap-2.5 border border-white/5">
+                      <div class="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl">
+                        <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
+                      </div>
                       <div>
-                        <div className="text-[10px] text-blue-100">ចំណូល</div>
-                        <div className="text-xs font-bold text-emerald-300">+{formatMoney(totalIncomeUSD)}</div>
+                        <p class="text-[10px] text-slate-400">ចំណូលសរុប</p>
+                        <p class="text-sm font-bold text-emerald-400">+{formatMoney(totalIncomeUSD)}</p>
                       </div>
                     </div>
 
-                    <div className="bg-white/10 p-2.5 rounded-2xl flex items-center gap-2">
-                      <i data-lucide="arrow-down-circle" className="w-5 h-5 text-rose-300"></i>
+                    <div class="bg-white/5 p-3 rounded-2xl flex items-center gap-2.5 border border-white/5">
+                      <div class="p-2 bg-rose-500/20 text-rose-400 rounded-xl">
+                        <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                      </div>
                       <div>
-                        <div className="text-[10px] text-blue-100">ចំណាយ</div>
-                        <div className="text-xs font-bold text-rose-300">-{formatMoney(totalExpenseUSD)}</div>
+                        <p class="text-[10px] text-slate-400">ចំណាយសរុប</p>
+                        <p class="text-sm font-bold text-rose-400">-{formatMoney(totalExpenseUSD)}</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <button 
-                  onClick={() => setShowForm(!showForm)}
-                  className="w-full bg-pureBlue text-white py-3 rounded-2xl text-xs font-semibold hover:bg-blue-800 transition shadow flex justify-center items-center gap-2"
-                >
-                  <i data-lucide={showForm ? "x-circle" : "plus-circle"} className="w-4 h-4"></i>
-                  {showForm ? 'បិទទម្រង់' : 'បន្ថែមចំណូល / ចំណាយ'}
-                </button>
-
-                {showForm && (
-                  <form onSubmit={handleAddTransaction} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3 text-xs">
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 mb-1">បរិយាយ</label>
-                      <input 
-                        type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                        placeholder="ឧ. ទិញបាយ, ប្រាក់ខែ" className="w-full p-2.5 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-xl outline-none focus:border-pureBlue" required
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-300 mb-1">ចំនួនទឹកប្រាក់</label>
-                        <input 
-                          type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
-                          placeholder="0.00" className="w-full p-2.5 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-xl outline-none focus:border-pureBlue" required
-                        />
+                {/* Wallet Balances Horizontal Scroll */}
+                <div>
+                  <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">កាតាបប្រាក់របស់អ្នក</h3>
+                  <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+                    {walletBalances.map((w, idx) => (
+                      <div key={idx} class="min-w-[130px] bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex-shrink-0 shadow-sm">
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">{w.name}</p>
+                        <p class="text-sm font-bold mt-1.5 text-slate-800 dark:text-slate-100">{formatMoney(w.balance)}</p>
                       </div>
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-300 mb-1">រូបិយប័ណ្ណ</label>
-                        <select value={formCurrency} onChange={(e) => setFormCurrency(e.target.value)} className="w-full p-2.5 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-xl outline-none">
-                          <option value="USD">$ USD</option>
-                          <option value="KHR">៛ KHR</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-300 mb-1">ប្រភេទ</label>
-                        <select value={type} onChange={(e) => setType(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-xl outline-none">
-                          <option value="expense">ចំណាយ (-)</option>
-                          <option value="income">ចំណូល (+)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-300 mb-1">ជំពូក</label>
-                        <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-xl outline-none">
-                          {CATEGORIES.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 dark:text-slate-300 mb-1">កាបូបលុយ</label>
-                        <select value={wallet} onChange={(e) => setWallet(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-xl outline-none">
-                          {WALLETS.map((w, idx) => <option key={idx} value={w}>{w}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    <button type="submit" disabled={loading} className="w-full bg-pureBlue text-white py-2.5 rounded-xl font-medium text-xs mt-2">
-                      {loading ? 'កំពុងរក្សាទុក...' : 'រក្សាទុក'}
-                    </button>
-                  </form>
-                )}
-
-                <div className="flex gap-2">
-                  <input 
-                    type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-                    placeholder="ស្វែងរកប្រវត្តិ..." 
-                    className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none shadow-sm"
-                  />
-                  <select 
-                    value={selectedCategoryFilter} onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                    className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none shadow-sm"
-                  >
-                    <option value="ទាំងអស់">ទាំងអស់</option>
-                    {CATEGORIES.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
-                  </select>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
 
-          {/* ផ្នែកខាងក្រោម (Scrollable Body) កន្លែងដែលទិន្នន័យអាចអូសឡើងចុះបានដាច់ដោយឡែក */}
-          <div className="flex-1 overflow-y-auto px-3 pb-24 space-y-3">
-            {activeTab === 'home' && (
-              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                <div className="p-3 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 font-bold text-xs flex justify-between">
-                  <span>ប្រវត្តិប្រតិបត្តិការ</span>
-                  <span className="text-[10px] text-slate-400 font-normal">({finalDisplayTransactions.length} ប្រតិបត្តិការ)</span>
+                {/* Search & Category Filter */}
+                <div class="space-y-2.5">
+                  <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
+                    <input 
+                      type="text" 
+                      placeholder="ស្វែងរកប្រវត្តិប្រតិបត្តិការ..." 
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      class="w-full bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                    />
+                  </div>
+
+                  <div class="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
+                    {['ទាំងអស់', ...CATEGORIES].map((cat, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => { triggerHaptic(); setSelectedCategoryFilter(cat); }}
+                        class={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition shadow-sm ${selectedCategoryFilter === cat ? 'bg-blue-600 text-white shadow-blue-600/20' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700'}`}>
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+
+                {/* Transactions List */}
+                <div class="space-y-2">
+                  <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ប្រវត្តិប្រតិបត្តិការ</h3>
+                    <span class="text-xs text-slate-400 font-medium">{finalDisplayTransactions.length} បេនប្រតិបត្តិការ</span>
+                  </div>
+
                   {finalDisplayTransactions.length === 0 ? (
-                    <div className="p-6 text-center text-slate-400 text-xs">មិនមានទិន្នន័យក្នុងកំឡុងពេលនេះឡើយ</div>
+                    <div class="text-center py-8 text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+                      <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                      <p class="text-xs">មិនទាន់មានទិន្នន័យឡើយ</p>
+                    </div>
                   ) : (
-                    finalDisplayTransactions.map((t) => (
-                      <div key={t.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`p-1.5 rounded-lg ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400'}`}>
-                            <i data-lucide={t.type === 'income' ? 'arrow-up-circle' : 'arrow-down-circle'} className="w-4 h-4"></i>
+                    finalDisplayTransactions.map(t => (
+                      <div key={t.id} class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex justify-between items-center shadow-sm hover:border-slate-300 transition">
+                        <div class="flex items-center gap-3">
+                          <div class={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${t.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                            <i data-lucide={t.type === 'income' ? 'arrow-down-left' : 'arrow-up-right'} class="w-5 h-5"></i>
                           </div>
                           <div>
-                            <div className="font-semibold text-xs">{t.title}</div>
-                            <div className="text-[10px] text-slate-400">{t.category} • <span className="text-pureBlue font-medium">{t.wallet || 'លុយសុទ្ធ'}</span> • {t.date}</div>
+                            <div class="flex items-center gap-1.5">
+                              <h4 class="font-semibold text-sm text-slate-800 dark:text-slate-100">{t.title}</h4>
+                              {t.receipt && (
+                                <button 
+                                  onClick={() => setSelectedReceipt(t.receipt)}
+                                  class="text-blue-500 hover:text-blue-600">
+                                  <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                                </button>
+                              )}
+                            </div>
+                            <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                              <span>{t.category}</span>
+                              <span>•</span>
+                              <span>{t.wallet || 'Cash'}</span>
+                              <span>•</span>
+                              <span>{t.date}</span>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`font-bold text-xs ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
+
+                        <div class="text-right flex items-center gap-3">
+                          <span class={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {t.type === 'income' ? '+' : '-'}{formatMoney(t.amount)}
                           </span>
-                          <button onClick={() => handleDelete(t.id)} className="text-slate-300 hover:text-rose-600 transition">
-                            <i data-lucide="trash-2" className="w-3.5 h-3.5"></i>
+                          <button 
+                            onClick={() => handleDelete(t.id)} 
+                            class="text-slate-300 hover:text-red-500 p-1 transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
                           </button>
                         </div>
                       </div>
                     ))
                   )}
                 </div>
-              </div>
+              </>
             )}
 
+            {/* Tab: Analytics */}
             {activeTab === 'analytics' && (
-              <div className="space-y-3 pt-2">
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-bold">ការបែងចែកចំណាយតាមប្រភេទ</h3>
-                    <span className="text-[10px] bg-blue-50 dark:bg-blue-900/40 text-pureBlue font-bold px-2 py-0.5 rounded-lg">
-                      {timeFilter === 'thisMonth' ? 'ខែនេះ' : timeFilter === 'lastMonth' ? 'ខែមុន' : 'ទាំងអស់'}
-                    </span>
-                  </div>
-                  <div className="h-52 relative">
+              <div class="space-y-4">
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm">
+                  <h3 class="font-bold text-sm mb-4 text-slate-800 dark:text-slate-100">ការភាគរយនៃការចំណាយតាមប្រភេទ</h3>
+                  <div class="h-64 relative">
                     <canvas ref={chartRef}></canvas>
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold">ពិដានថវិកាប្រចាំខែ</span>
-                  </div>
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3">
+                  <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <i data-lucide="sliders" class="w-4 h-4 text-blue-500"></i>
+                    កំណត់ថវិកាតាមប្រភេទ (Category Budgets)
+                  </h3>
 
-                  <div className="flex gap-2">
-                    <input 
-                      type="number" value={tempBudget} onChange={(e) => setTempBudget(e.target.value)}
-                      className="p-2 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-xl text-xs w-full outline-none" placeholder="កំណត់ថវិកា ($)"
-                    />
-                    <button 
-                      onClick={() => { setBudgetLimit(parseFloat(tempBudget)); localStorage.setItem('budgetLimit', tempBudget); }}
-                      className="bg-pureBlue text-white px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap"
-                    >
-                      រក្សាទុក
-                    </button>
-                  </div>
+                  <div class="space-y-3 pt-2">
+                    {CATEGORIES.slice(0, 4).map(cat => {
+                      const catSpent = dateFilteredTransactions
+                        .filter(t => t.type === 'expense' && t.category === cat)
+                        .reduce((a, c) => a + c.amount, 0);
+                      const limit = categoryBudgets[cat] || 100;
+                      const pct = Math.min((catSpent / limit) * 100, 100);
 
-                  <div className="w-full bg-slate-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                    <div className={`h-full ${isOverBudget ? 'bg-rose-600' : isNearBudget ? 'bg-amber-500' : 'bg-pureBlue'}`} style={{ width: `${budgetPercent}%` }}></div>
-                  </div>
-
-                  <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                    <span>បានចំណាយ៖ {formatMoney(totalExpenseUSD)}</span>
-                    <span>ពិដាន៖ ${budgetLimit}</span>
+                      return (
+                        <div key={cat} class="space-y-1">
+                          <div class="flex justify-between text-xs font-medium">
+                            <span>{cat}</span>
+                            <span class={catSpent > limit ? "text-red-500 font-bold" : "text-slate-500"}>
+                              ${catSpent.toFixed(2)} / ${limit}
+                            </span>
+                          </div>
+                          <div class="w-full h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div 
+                              class={`h-full transition-all ${catSpent > limit ? 'bg-red-500' : 'bg-blue-500'}`} 
+                              style={{ width: `${pct}%` }}>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             )}
 
-            {activeTab === 'tools' && (
-              <div className="space-y-3 pt-2">
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <i data-lucide={darkMode ? "moon" : "sun"} className="w-4 h-4 text-pureBlue"></i>
-                    <span className="text-xs font-bold">ពន្លឺអេក្រង់ (Dark Mode)</span>
+            {/* Tab: Features */}
+            {activeTab === 'features' && (
+              <div class="space-y-4">
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-2.5">
+                  <div class="flex justify-between items-center text-xs">
+                    <span class="font-semibold text-slate-600 dark:text-slate-300">កម្រិតថវិកាចំណាយ (Monthly Budget)</span>
+                    <span class="font-bold text-blue-600 dark:text-blue-400">
+                      ${totalExpenseUSD.toFixed(2)} / ${budgetLimit}
+                    </span>
+                  </div>
+                  <div class="w-full h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div 
+                      class={`h-full transition-all duration-300 ${totalExpenseUSD > budgetLimit ? 'bg-red-500' : 'bg-blue-600'}`}
+                      style={{ width: `${Math.min((totalExpenseUSD / (budgetLimit || 1)) * 100, 100)}%` }}>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3">
+                  <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <i data-lucide="target" class="w-4 h-4 text-emerald-500"></i>
+                    គោលដៅសន្សំប្រាក់ (Savings Goals)
+                  </h3>
+
+                  <form onSubmit={handleAddGoal} class="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="ឈ្មោះគោលដៅ" 
+                      value={goalTitle}
+                      onChange={(e) => setGoalTitle(e.target.value)}
+                      class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs"
+                    />
+                    <input 
+                      type="number" 
+                      placeholder="គោលដៅ ($)" 
+                      value={goalTarget}
+                      onChange={(e) => setGoalTarget(e.target.value)}
+                      class="w-24 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs"
+                    />
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm">
+                      បន្ថែម
+                    </button>
+                  </form>
+
+                  <div class="space-y-3 pt-2">
+                    {savingsGoals.map(g => {
+                      const pct = Math.min((g.current / g.target) * 100, 100);
+                      return (
+                        <div key={g.id} class="bg-slate-50 dark:bg-slate-700/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+                          <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold">{g.title}</span>
+                            <span class="text-emerald-500 font-semibold">${g.current} / ${g.target} ({pct.toFixed(0)}%)</span>
+                          </div>
+                          <div class="w-full h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }}></div>
+                          </div>
+                          <button 
+                            onClick={() => handleDepositGoal(g.id)}
+                            class="w-full text-center py-1 text-xs text-blue-500 hover:text-blue-600 font-medium">
+                            + ថែមថវិកាសន្សំ
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3">
+                  <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <i data-lucide="bell" class="w-4 h-4 text-amber-500"></i>
+                    រំលឹកបង់ប្រាក់ប្រចាំខែ (Bill Reminders)
+                  </h3>
+
+                  <form onSubmit={handleAddBill} class="grid grid-cols-2 gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="ឈ្មោះវិក្កយបត្រ" 
+                      value={billTitle}
+                      onChange={(e) => setBillTitle(e.target.value)}
+                      class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs col-span-2"
+                    />
+                    <input 
+                      type="number" 
+                      placeholder="ចំនួនទឹកប្រាក់ ($)" 
+                      value={billAmount}
+                      onChange={(e) => setBillAmount(e.target.value)}
+                      class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs"
+                    />
+                    <input 
+                      type="date" 
+                      value={billDueDate}
+                      onChange={(e) => setBillDueDate(e.target.value)}
+                      class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs text-slate-400"
+                    />
+                    <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white py-2 rounded-xl text-xs font-semibold col-span-2 shadow-sm">
+                      កំណត់រំលឹក
+                    </button>
+                  </form>
+
+                  <div class="space-y-2 pt-2">
+                    {reminders.map(b => (
+                      <div key={b.id} class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div>
+                          <p class="text-xs font-bold text-slate-800 dark:text-slate-100">{b.title}</p>
+                          <p class="text-[10px] text-amber-500">កាលកំណត់៖ {b.dueDate}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs font-bold">${b.amount}</span>
+                          <button 
+                            onClick={() => handlePayBill(b)}
+                            class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-[11px] font-semibold shadow-sm">
+                            ទូទាត់
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Settings */}
+            {activeTab === 'settings' && (
+              <div class="space-y-4">
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <i data-lucide={darkMode ? "sun" : "moon"} class="w-4 h-4 text-blue-500"></i>
+                    <span class="font-bold text-sm text-slate-800 dark:text-slate-100">ម៉ូតងងឹត (Dark Mode)</span>
                   </div>
                   <button 
-                    onClick={() => setDarkMode(!darkMode)}
-                    className="bg-slate-200 dark:bg-slate-700 p-1.5 rounded-xl text-xs font-bold"
-                  >
-                    {darkMode ? '🌙 ងងឹត' : '☀️ ភ្លឺ'}
+                    onClick={() => { triggerHaptic(); setDarkMode(!darkMode); }}
+                    class={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${darkMode ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                    <div class={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${darkMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
                   </button>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
-                  <div className="flex items-center gap-2">
-                    <i data-lucide="shield-check" className="w-4 h-4 text-pureBlue"></i>
-                    <span className="text-xs font-bold">សុវត្ថិភាពលេខកូដ (PIN Lock)</span>
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3">
+                  <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">សុវត្ថិភាព (PIN Code & Biometrics)</h3>
+                  
+                  <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700">
+                    <span class="text-xs text-slate-600 dark:text-slate-300">ស្ថានភាពលេខ PIN</span>
+                    <span class="text-xs font-bold text-blue-500">{savedPin ? 'បានកំណត់រួច' : 'មិនទាន់កំណត់'}</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">ការពារការចូលមើលទិន្នន័យដោយគ្មានការអនុញ្ញាត</p>
-                  <div className="flex gap-2 pt-1">
-                    <input 
-                      type="password" maxLength="4" placeholder="កូដ ៤ ខ្ទង់" 
-                      onChange={(e) => setPinInput(e.target.value)}
-                      className="p-2 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-xl text-xs w-full outline-none text-center"
-                    />
+
+                  <div class="flex gap-2">
                     <button 
-                      onClick={() => handleSetPin(pinInput)}
-                      className="bg-pureBlue text-white px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap"
-                    >
-                      {savedPin ? 'ប្តូរកូដ' : 'ដាក់កូដ'}
+                      onClick={() => {
+                        const pin = prompt('បញ្ចូលលេខកូដ PIN ថ្មី ៤ ឬ ៦ ខ្ទង់៖');
+                        if (pin !== null) handleSetPin(pin);
+                      }}
+                      class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-semibold transition shadow-sm">
+                      {savedPin ? 'ផ្លាស់ប្ដូរ PIN' : 'កំណត់លេខ PIN'}
                     </button>
                     {savedPin && (
                       <button 
                         onClick={() => handleSetPin('')}
-                        className="bg-rose-600 text-white px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap"
-                      >
-                        លុបកូដ
+                        class="bg-red-500 hover:bg-red-600 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold transition shadow-sm">
+                        លុប PIN
                       </button>
                     )}
                   </div>
-                </div>
 
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <i data-lucide="scan-face" className="w-4 h-4 text-pureBlue"></i>
-                    <span className="text-xs font-bold">ស្កែនមុខ / ក្រយៅដៃ (Biometric)</span>
-                  </div>
-                  {isBiometricEnabled ? (
-                    <button 
-                      onClick={() => {
-                        setIsBiometricEnabled(false);
-                        localStorage.setItem('biometric_enabled', 'false');
-                      }}
-                      className="bg-rose-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold"
-                    >
-                      បិទ
-                    </button>
-                  ) : (
+                  <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
                     <button 
                       onClick={handleRegisterBiometric}
-                      className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold"
-                    >
-                      ចុះឈ្មោះ / បើក
+                      class="w-full flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 py-2.5 rounded-xl text-xs font-semibold transition">
+                      <i data-lucide="scan-face" class="w-4 h-4 text-blue-500"></i>
+                      <span>{isBiometricEnabled ? 'ចុះឈ្មោះ Face ID/ក្រយៅដៃ ឡើងវិញ' : 'បើកប្រើប្រាស់ Face ID / ក្រយៅដៃ'}</span>
                     </button>
-                  )}
+                  </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
-                  <span className="text-xs font-bold">រូបិយប័ណ្ណបង្ហាញ</span>
-                  <button 
-                    onClick={() => setCurrency(currency === 'USD' ? 'KHR' : 'USD')}
-                    className="bg-pureBlue text-white font-bold px-3 py-1.5 rounded-xl text-xs"
-                  >
-                    {currency === 'USD' ? 'USD ($)' : 'KHR (៛)'}
-                  </button>
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3">
+                  <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">កំណត់ថវិកាប្រចាំខែ (Monthly Budget)</h3>
+                  <div class="flex gap-2">
+                    <input 
+                      type="number" 
+                      value={tempBudget}
+                      onChange={(e) => setTempBudget(e.target.value)}
+                      class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs"
+                    />
+                    <button 
+                      onClick={() => {
+                        triggerHaptic();
+                        const val = parseFloat(tempBudget);
+                        if (val > 0) {
+                          setBudgetLimit(val);
+                          localStorage.setItem('budgetLimit', val);
+                          alert('បានរក្សាទុកថវិកាថ្មី!');
+                        }
+                      }}
+                      class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm">
+                      រក្សាទុក
+                    </button>
+                  </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
-                  <h3 className="text-xs font-bold mb-2">ទាញយករបាយការណ៍ (Export)</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button onClick={exportToCSV} className="flex items-center justify-center gap-1.5 bg-emerald-600 text-white p-2.5 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition">
-                      <i data-lucide="file-text" className="w-4 h-4"></i> Excel (CSV)
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3">
+                  <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">ទិន្នន័យ & របាយការណ៍</h3>
+                  
+                  <div class="grid grid-cols-2 gap-2">
+                    <button onClick={exportToCSV} class="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-200 transition">
+                      <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-500"></i>
+                      <span>ទាញយក CSV</span>
                     </button>
-                    <button onClick={exportToPDF} className="flex items-center justify-center gap-1.5 bg-rose-600 text-white p-2.5 rounded-xl text-xs font-semibold hover:bg-rose-700 transition">
-                      <i data-lucide="printer" className="w-4 h-4"></i> Print (PDF)
+
+                    <button onClick={exportToPDF} class="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-200 transition">
+                      <i data-lucide="printer" class="w-4 h-4 text-blue-500"></i>
+                      <span>បោះពុម្ព PDF</span>
                     </button>
+
+                    <button onClick={handleExportJSON} class="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-200 transition">
+                      <i data-lucide="download" class="w-4 h-4 text-purple-500"></i>
+                      <span>Backup JSON</span>
+                    </button>
+
+                    <button onClick={() => fileInputRef.current && fileInputRef.current.click()} class="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-200 transition">
+                      <i data-lucide="upload" class="w-4 h-4 text-amber-500"></i>
+                      <span>Restore JSON</span>
+                    </button>
+                    <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" class="hidden" />
                   </div>
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Navigation Bar ខាងក្រោម */}
-          <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-6 py-2 pb-6 flex justify-between items-center shadow-lg z-50">
+          </main>
+
+          {/* Bottom Navigation */}
+          <nav class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center px-4 py-2 fixed bottom-0 left-0 right-0 max-w-md mx-auto z-10 shadow-lg">
             <button 
-              onClick={() => setActiveTab('home')} 
-              className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${activeTab === 'home' ? 'text-pureBlue' : 'text-slate-400'}`}
-            >
-              <i data-lucide="home" className="w-5 h-5"></i>
-              <span>ទំព័រដើម</span>
+              onClick={() => { triggerHaptic(); setActiveTab('home'); }}
+              class={`flex flex-col items-center gap-1 transition ${activeTab === 'home' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
+              <i data-lucide="home" class="w-5 h-5"></i>
+              <span class="text-[11px]">ទំព័រដើម</span>
             </button>
 
             <button 
-              onClick={() => setActiveTab('analytics')} 
-              className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${activeTab === 'analytics' ? 'text-pureBlue' : 'text-slate-400'}`}
-            >
-              <i data-lucide="pie-chart" className="w-5 h-5"></i>
-              <span>ការវិភាគ</span>
+              onClick={() => { triggerHaptic(); setActiveTab('analytics'); }}
+              class={`flex flex-col items-center gap-1 transition ${activeTab === 'analytics' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
+              <i data-lucide="pie-chart" class="w-5 h-5"></i>
+              <span class="text-[11px]">វិភាគ</span>
+            </button>
+
+            {/* Middle Floating Add Button */}
+            <div class="relative -top-5">
+              <button 
+                onClick={() => { triggerHaptic(); setShowForm(true); }}
+                class="w-12 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-600/30 transition transform active:scale-95">
+                <i data-lucide="plus" class="w-6 h-6"></i>
+              </button>
+            </div>
+
+            <button 
+              onClick={() => { triggerHaptic(); setActiveTab('features'); }}
+              class={`flex flex-col items-center gap-1 transition ${activeTab === 'features' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
+              <i data-lucide="sparkles" class="w-5 h-5"></i>
+              <span class="text-[11px]">មុខងារ</span>
             </button>
 
             <button 
-              onClick={() => setActiveTab('tools')} 
-              className={`flex flex-col items-center gap-1 text-[11px] font-medium transition ${activeTab === 'tools' ? 'text-pureBlue' : 'text-slate-400'}`}
-            >
-              <i data-lucide="sliders" className="w-5 h-5"></i>
-              <span>ឧបករណ៍</span>
+              onClick={() => { triggerHaptic(); setActiveTab('settings'); }}
+              class={`flex flex-col items-center gap-1 transition ${activeTab === 'settings' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
+              <i data-lucide="settings" class="w-5 h-5"></i>
+              <span class="text-[11px]">ការកំណត់</span>
             </button>
-          </div>
+          </nav>
+
+          {/* Add Transaction Modal */}
+          {showForm && (
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+              <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+                <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
+                  <h3 class="font-bold text-base text-slate-800 dark:text-slate-100">បន្ថែមប្រតិបត្តិការ</h3>
+                  <button onClick={() => setShowForm(false)} class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddTransaction} class="space-y-4">
+                  <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-2xl text-xs font-bold">
+                    <button 
+                      type="button"
+                      onClick={() => { triggerHaptic(); setType('expense'); }}
+                      class={`flex-1 py-2.5 rounded-xl transition ${type === 'expense' ? 'bg-rose-500 text-white shadow' : 'text-slate-500'}`}>
+                      ចំណាយ
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => { triggerHaptic(); setType('income'); }}
+                      class={`flex-1 py-2.5 rounded-xl transition ${type === 'income' ? 'bg-emerald-500 text-white shadow' : 'text-slate-500'}`}>
+                      ចំណូល
+                    </button>
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">បរិយាយ / ឈ្មោះប្រតិបត្តិការ</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="ឧ. ទិញកាហ្វេ, បង់ថ្លៃផ្ទះ"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="col-span-2">
+                      <label class="block text-xs font-semibold text-slate-500 mb-1">ចំនួនទឹកប្រាក់</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        required
+                        placeholder="0.00"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-500 mb-1">រូបិយវត្ថុ</label>
+                      <select 
+                        value={formCurrency}
+                        onChange={(e) => setFormCurrency(e.target.value)}
+                        class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl px-2 py-3 text-xs font-semibold">
+                        <option value="USD">USD ($)</option>
+                        <option value="KHR">KHR (៛)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-500 mb-1">ប្រភេទ</label>
+                      <select 
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl px-3 py-3 text-xs">
+                        {CATEGORIES.map((c, i) => <option key={i} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-500 mb-1">ប្រភព/កាតាប</label>
+                      <select 
+                        value={wallet}
+                        onChange={(e) => setWallet(e.target.value)}
+                        class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl px-3 py-3 text-xs">
+                        {WALLETS.map((w, i) => <option key={i} value={w}>{w}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ភ្ជាប់រូបថតវិក្កយបត្រ</label>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 dark:file:bg-slate-700 dark:file:text-slate-200"
+                    />
+                    {receiptImage && (
+                      <div class="mt-2 w-16 h-16 rounded-xl overflow-hidden border border-slate-300">
+                        <img src={receiptImage} alt="Receipt Preview" class="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={loading}
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg flex items-center justify-center gap-2">
+                    {loading ? (
+                      <i data-lucide="refresh-cw" class="w-5 h-5 animate-spin"></i>
+                    ) : (
+                      <span>រក្សាទុកទិន្នន័យ</span>
+                    )}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* View Receipt Image Modal */}
+          {selectedReceipt && (
+            <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+              <div class="relative max-w-sm w-full bg-slate-900 p-2 rounded-3xl">
+                <button 
+                  onClick={() => setSelectedReceipt(null)}
+                  class="absolute top-4 right-4 bg-slate-800 text-white p-2 rounded-full z-10">
+                  <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+                <img src={selectedReceipt} alt="Receipt" class="w-full h-auto rounded-2xl object-contain max-h-[80vh]" />
+              </div>
+            </div>
+          )}
 
         </div>
       );
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App/>);
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
 </body>
 </html>
