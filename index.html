@@ -6,7 +6,6 @@
   <title>កម្មវិធីគ្រប់គ្រងហិរញ្ញវត្ថុ Pro</title>
 
   <link rel="manifest" href="manifest.json">
-
   <link rel="icon" type="image/png" href="iconfinances.png">
   <link rel="apple-touch-icon" href="iconfinances.png">
   
@@ -40,12 +39,18 @@
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
-    body {
+    * {
+      -webkit-tap-highlight-color: transparent !important;
       touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      user-select: none;
+      -webkit-user-select: none;
     }
     input, select, textarea {
       font-size: 16px !important;
+      user-select: text !important;
+      -webkit-user-select: text !important;
     }
     .ios-scroll {
       -webkit-overflow-scrolling: touch;
@@ -60,12 +65,20 @@
       scrollbar-width: none !important;
     }
     
-    /* កែប្រែ Safe Area ដើម្បីរុញ Menu ឡើងលើផុសផុតពី Home Bar របស់ iPhone */
     .pt-safe {
       padding-top: max(20px, env(safe-area-inset-top, 20px));
     }
     .pb-safe {
       padding-bottom: max(30px, env(safe-area-inset-bottom, 30px)) !important;
+    }
+
+    /* ធ្វើឱ្យ Button មាន Feedback ចុចលឿនទាន់ចិត្ត */
+    .btn-active {
+      transition: transform 0.08s ease, opacity 0.08s ease;
+    }
+    .btn-active:active {
+      transform: scale(0.96);
+      opacity: 0.85;
     }
   </style>
 </head>
@@ -74,7 +87,7 @@
   <div id="root" class="h-full"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+    const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
     const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbygQbXEB-856p-WG2A6YADv7lRA5jHzcSh2eIFK3lipMmif_4dvC2_YMawaK7zncI21XA/exec";
     const EXCHANGE_RATE = 4100;
@@ -89,7 +102,7 @@
 
     const triggerHaptic = () => {
       if (navigator.vibrate) {
-        navigator.vibrate(12);
+        navigator.vibrate(8);
       }
     };
 
@@ -97,9 +110,7 @@
       const [showSplash, setShowSplash] = useState(true);
 
       useEffect(() => {
-        const timer = setTimeout(() => {
-          setShowSplash(false);
-        }, 2000);
+        const timer = setTimeout(() => setShowSplash(false), 1200);
         return () => clearTimeout(timer);
       }, []);
 
@@ -109,32 +120,36 @@
       const [pinError, setPinError] = useState('');
       
       const [isBiometricEnabled, setIsBiometricEnabled] = useState(() => localStorage.getItem('biometric_enabled') === 'true');
-
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem('dark_mode') === 'true');
+
       const [transactions, setTransactions] = useState(() => {
-        const local = localStorage.getItem('local_transactions');
-        return local ? JSON.parse(local) : [];
+        try {
+          const local = localStorage.getItem('local_transactions');
+          return local ? JSON.parse(local) : [];
+        } catch { return []; }
       });
 
       const [categoryBudgets, setCategoryBudgets] = useState(() => {
-        const local = localStorage.getItem('category_budgets');
-        return local ? JSON.parse(local) : { 'ម្ហូបអាហារ': 150, 'ការកម្សាន្ត': 50 };
+        try {
+          const local = localStorage.getItem('category_budgets');
+          return local ? JSON.parse(local) : { 'ម្ហូបអាហារ': 150, 'ការកម្សាន្ត': 50 };
+        } catch { return {}; }
       });
 
       const [savingsGoals, setSavingsGoals] = useState(() => {
-        const local = localStorage.getItem('savings_goals');
-        return local ? JSON.parse(local) : [
-          { id: 1, title: 'ទិញទូរស័ព្ទថ្មី', target: 800, current: 350 }
-        ];
+        try {
+          const local = localStorage.getItem('savings_goals');
+          return local ? JSON.parse(local) : [{ id: 1, title: 'ទិញទូរស័ព្ទថ្មី', target: 800, current: 350 }];
+        } catch { return []; }
       });
       const [goalTitle, setGoalTitle] = useState('');
       const [goalTarget, setGoalTarget] = useState('');
 
       const [reminders, setReminders] = useState(() => {
-        const local = localStorage.getItem('bill_reminders');
-        return local ? JSON.parse(local) : [
-          { id: 1, title: 'ថ្លៃអ៊ីនធឺណិត', amount: 25, dueDate: '2026-03-05', category: 'ផ្ទះ/ទឹកភ្លើង' }
-        ];
+        try {
+          const local = localStorage.getItem('bill_reminders');
+          return local ? JSON.parse(local) : [{ id: 1, title: 'ថ្លៃអ៊ីនធឺណិត', amount: 25, dueDate: '2026-03-05', category: 'ផ្ទះ/ទឹកភ្លើង' }];
+        } catch { return []; }
       });
       const [billTitle, setBillTitle] = useState('');
       const [billAmount, setBillAmount] = useState('');
@@ -190,8 +205,7 @@
         localStorage.setItem('dark_mode', darkMode);
       }, [darkMode]);
 
-      const fetchData = async () => {
-        triggerHaptic();
+      const fetchData = useCallback(async () => {
         if (!GOOGLE_SHEET_URL || GOOGLE_SHEET_URL.includes("YOUR_GOOGLE")) return;
         setSyncing(true);
         try {
@@ -202,15 +216,15 @@
           console.error("Fetch Error:", err);
         }
         setSyncing(false);
-      };
+      }, []);
 
-      useEffect(() => { fetchData(); }, []);
+      useEffect(() => { fetchData(); }, [fetchData]);
 
       useEffect(() => {
         if (window.lucide && !showSplash) {
-          setTimeout(() => window.lucide.createIcons(), 50);
+          window.lucide.createIcons();
         }
-      }, [transactions, showForm, activeTab, currency, selectedCategoryFilter, timeFilter, syncing, isLocked, darkMode, showSplash, isBiometricEnabled, selectedReceipt, savingsGoals, reminders, categoryBudgets]);
+      }, [activeTab, transactions, showForm, showSplash, selectedCategoryFilter]);
 
       const handleUnlock = (e) => {
         e.preventDefault();
@@ -228,66 +242,40 @@
       const handleRegisterBiometric = async () => {
         triggerHaptic();
         try {
-          if (!window.PublicKeyCredential) {
-            alert('Browser របស់អ្នកមិនគាំទ្រមុខងារ Face ID / ក្រយៅដៃទេ។');
-            return;
-          }
-
+          if (!window.PublicKeyCredential) return alert('Browser មិនគាំទ្រទេ');
           const challenge = new Uint8Array(32);
           window.crypto.getRandomValues(challenge);
-
-          const publicKey = {
-            challenge: challenge,
-            rp: { name: "Finance Pro App" },
-            user: {
-              id: Uint8Array.from("FinanceUser", c => c.charCodeAt(0)),
-              name: "user@finance.com",
-              displayName: "User"
-            },
-            pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
-            timeout: 60000,
-            attestation: "none",
-            authenticatorSelection: {
-              authenticatorAttachment: "platform",
-              userVerification: "required"
+          const credential = await navigator.credentials.create({
+            publicKey: {
+              challenge,
+              rp: { name: "Finance App" },
+              user: { id: new Uint8Array(16), name: "user", displayName: "User" },
+              pubKeyCredParams: [{ alg: -7, type: "public-key" }],
+              timeout: 60000,
+              authenticatorSelection: { userVerification: "required" }
             }
-          };
-
-          const credential = await navigator.credentials.create({ publicKey });
+          });
           if (credential) {
             setIsBiometricEnabled(true);
             localStorage.setItem('biometric_enabled', 'true');
-            alert('បានបើកដំណើរការ Face ID / ក្រយៅដៃ ជោគជ័យ!');
+            alert('បានបើក Face ID/ក្រយៅដៃ រួចរាល់');
           }
         } catch (err) {
-          console.error(err);
-          alert('មិនអាចចុះឈ្មោះ Face ID / ក្រយៅដៃ បានទេ');
+          alert('មិនអាចកំណត់បានទេ');
         }
       };
 
       const handleBiometricAuth = async () => {
         triggerHaptic();
         try {
-          if (!window.PublicKeyCredential) return;
-
           const challenge = new Uint8Array(32);
           window.crypto.getRandomValues(challenge);
-
           const assertion = await navigator.credentials.get({
-            publicKey: {
-              challenge: challenge,
-              timeout: 60000,
-              userVerification: "required"
-            }
+            publicKey: { challenge, timeout: 60000, userVerification: "required" }
           });
-
-          if (assertion) {
-            setIsLocked(false);
-            setPinError('');
-          }
+          if (assertion) setIsLocked(false);
         } catch (err) {
-          console.error(err);
-          setPinError('ការស្កែនមុខ/ក្រយៅដៃមិនជោគជ័យ');
+          setPinError('ស្កែនមិនជោគជ័យ');
         }
       };
 
@@ -306,9 +294,7 @@
         const file = e.target.files[0];
         if (file) {
           const reader = new FileReader();
-          reader.onloadend = () => {
-            setReceiptImage(reader.result);
-          };
+          reader.onloadend = () => setReceiptImage(reader.result);
           reader.readAsDataURL(file);
         }
       };
@@ -333,7 +319,7 @@
           date: new Date().toISOString().split('T')[0]
         };
 
-        setTransactions([newTx, ...transactions]);
+        setTransactions(prev => [newTx, ...prev]);
 
         if (GOOGLE_SHEET_URL && !GOOGLE_SHEET_URL.includes("YOUR_GOOGLE")) {
           try {
@@ -343,7 +329,7 @@
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(newTx),
             });
-          } catch (err) { console.error("Save Error:", err); }
+          } catch (err) { console.error(err); }
         }
 
         setTitle(''); setAmount(''); setReceiptImage(null); setShowForm(false); setLoading(false);
@@ -351,7 +337,7 @@
 
       const handleDelete = async (id) => {
         triggerHaptic();
-        setTransactions(transactions.filter(t => t.id !== id));
+        setTransactions(prev => prev.filter(t => t.id !== id));
         if (GOOGLE_SHEET_URL && !GOOGLE_SHEET_URL.includes("YOUR_GOOGLE")) {
           try {
             await fetch(GOOGLE_SHEET_URL, {
@@ -360,151 +346,55 @@
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ action: "delete", id }),
             });
-          } catch (err) { console.error("Delete Error:", err); }
+          } catch (err) { console.error(err); }
         }
       };
 
-      const handleAddGoal = (e) => {
-        e.preventDefault();
-        if (!goalTitle || !goalTarget) return;
-        const newGoal = {
-          id: Date.now(),
-          title: goalTitle,
-          target: parseFloat(goalTarget),
-          current: 0
-        };
-        setSavingsGoals([...savingsGoals, newGoal]);
-        setGoalTitle('');
-        setGoalTarget('');
-      };
+      const dateFilteredTransactions = useMemo(() => {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
 
-      const handleDepositGoal = (id) => {
-        const amountStr = prompt('បញ្ចូលចំនួនទឹកប្រាក់ដែលត្រូវសន្សំថែម ($)៖');
-        const depositVal = parseFloat(amountStr);
-        if (depositVal && depositVal > 0) {
-          setSavingsGoals(savingsGoals.map(g => g.id === id ? { ...g, current: g.current + depositVal } : g));
-          triggerHaptic();
-        }
-      };
+        return transactions.filter(t => {
+          if (timeFilter === 'all') return true;
+          const txDate = new Date(t.date);
+          const txYear = txDate.getFullYear();
+          const txMonth = txDate.getMonth();
 
-      const handleAddBill = (e) => {
-        e.preventDefault();
-        if (!billTitle || !billAmount || !billDueDate) return;
-        const newBill = {
-          id: Date.now(),
-          title: billTitle,
-          amount: parseFloat(billAmount),
-          dueDate: billDueDate,
-          category: 'ផ្ទះ/ទឹកភ្លើង'
-        };
-        setReminders([...reminders, newBill]);
-        setBillTitle('');
-        setBillAmount('');
-        setBillDueDate('');
-      };
+          if (timeFilter === 'thisMonth') {
+            return txYear === currentYear && txMonth === currentMonth;
+          }
+          if (timeFilter === 'lastMonth') {
+            const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+            const lastMonthIndex = currentMonth === 0 ? 11 : currentMonth - 1;
+            return txYear === lastMonthYear && txMonth === lastMonthIndex;
+          }
+          return true;
+        });
+      }, [transactions, timeFilter]);
 
-      const handlePayBill = (bill) => {
-        triggerHaptic();
-        const newTx = {
-          id: Date.now(),
-          title: `បង់៖ ${bill.title}`,
-          amount: bill.amount,
-          type: 'expense',
-          category: bill.category || 'ផ្ទះ/ទឹកភ្លើង',
-          wallet: WALLETS[0],
-          date: new Date().toISOString().split('T')[0]
-        };
-        setTransactions([newTx, ...transactions]);
-        setReminders(reminders.filter(r => r.id !== bill.id));
-        alert(`បានទូទាត់ «${bill.title}» រួចរាល់!`);
-      };
+      const totalIncomeUSD = useMemo(() => {
+        return dateFilteredTransactions.filter(t => t.type === 'income').reduce((a, c) => a + c.amount, 0);
+      }, [dateFilteredTransactions]);
 
-      const handleExportJSON = () => {
-        triggerHaptic();
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `finance_backup_${new Date().toISOString().split('T')[0]}.json`);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
-      };
+      const totalExpenseUSD = useMemo(() => {
+        return dateFilteredTransactions.filter(t => t.type === 'expense').reduce((a, c) => a + c.amount, 0);
+      }, [dateFilteredTransactions]);
 
-      const handleImportJSON = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            try {
-              const importedData = JSON.parse(event.target.result);
-              if (Array.isArray(importedData)) {
-                setTransactions(importedData);
-                alert('បាននាំចូលទិន្នន័យជោគជ័យ!');
-              }
-            } catch (err) {
-              alert('ឯកសារ JSON មិនត្រឹមត្រូវទេ!');
-            }
-          };
-          reader.readAsText(file);
-        }
-      };
+      const balanceUSD = useMemo(() => totalIncomeUSD - totalExpenseUSD, [totalIncomeUSD, totalExpenseUSD]);
 
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth();
+      const walletBalances = useMemo(() => {
+        return WALLETS.map(w => {
+          const wIncome = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.type === 'income').reduce((a, c) => a + c.amount, 0);
+          const wExpense = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.type === 'expense').reduce((a, c) => a + c.amount, 0);
+          return { name: w, balance: wIncome - wExpense };
+        });
+      }, [transactions]);
 
-      const dateFilteredTransactions = transactions.filter(t => {
-        if (timeFilter === 'all') return true;
-        const txDate = new Date(t.date);
-        const txYear = txDate.getFullYear();
-        const txMonth = txDate.getMonth();
-
-        if (timeFilter === 'thisMonth') {
-          return txYear === currentYear && txMonth === currentMonth;
-        }
-
-        if (timeFilter === 'lastMonth') {
-          const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-          const lastMonthIndex = currentMonth === 0 ? 11 : currentMonth - 1;
-          return txYear === lastMonthYear && txMonth === lastMonthIndex;
-        }
-
-        return true;
-      });
-
-      const totalIncomeUSD = dateFilteredTransactions.filter(t => t.type === 'income').reduce((a, c) => a + c.amount, 0);
-      const totalExpenseUSD = dateFilteredTransactions.filter(t => t.type === 'expense').reduce((a, c) => a + c.amount, 0);
-      const balanceUSD = totalIncomeUSD - totalExpenseUSD;
-
-      const walletBalances = WALLETS.map(w => {
-        const wIncome = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.type === 'income').reduce((a, c) => a + c.amount, 0);
-        const wExpense = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.type === 'expense').reduce((a, c) => a + c.amount, 0);
-        return { name: w, balance: wIncome - wExpense };
-      });
-
-      const formatMoney = (valInUSD) => {
+      const formatMoney = useCallback((valInUSD) => {
         if (currency === 'KHR') return (valInUSD * EXCHANGE_RATE).toLocaleString('km-KH') + ' ៛';
         return '$' + valInUSD.toFixed(2);
-      };
-
-      const exportToCSV = () => {
-        triggerHaptic();
-        let csv = "ID,Title,Amount(USD),Type,Category,Wallet,Date\n";
-        dateFilteredTransactions.forEach(t => {
-          csv += `"${t.id}","${t.title}","${t.amount}","${t.type}","${t.category}","${t.wallet || 'លុយសុទ្ធ'}","${t.date}"\n`;
-        });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Financial_Report_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-      };
-
-      const exportToPDF = () => {
-        triggerHaptic();
-        window.print();
-      };
+      }, [currency]);
 
       useEffect(() => {
         if (activeTab !== 'analytics' || !chartRef.current) return;
@@ -524,26 +414,24 @@
               backgroundColor: ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#64748B', '#06B6D4', '#84CC16']
             }]
           },
-          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+          options: { responsive: true, maintainAspectRatio: false, animation: { duration: 300 }, plugins: { legend: { position: 'bottom' } } }
         });
       }, [dateFilteredTransactions, activeTab]);
 
-      const finalDisplayTransactions = dateFilteredTransactions.filter(t => {
-        const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) || 
-                              t.category.toLowerCase().includes(search.toLowerCase());
-        const matchesCategory = selectedCategoryFilter === 'ទាំងអស់' || t.category === selectedCategoryFilter;
-        return matchesSearch && matchesCategory;
-      });
+      const finalDisplayTransactions = useMemo(() => {
+        return dateFilteredTransactions.filter(t => {
+          const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) || 
+                                t.category.toLowerCase().includes(search.toLowerCase());
+          const matchesCategory = selectedCategoryFilter === 't.category === selectedCategoryFilter;
+          return matchesSearch && matchesCategory;
+        });
+      }, [dateFilteredTransactions, search, selectedCategoryFilter]);
 
       if (showSplash) {
         return (
           <div class="h-full w-full flex flex-col items-center justify-center bg-slate-900 text-white fixed inset-0 z-50 pt-safe">
             <div class="w-40 h-40 rounded-2xl overflow-hidden shadow-2xl border border-slate-700 flex items-center justify-center animate-pulse">
-              <img 
-                src="https://lh3.googleusercontent.com/d/1yak4qUpNBbl-RFSSSd5ra8hz_Ladgztc" 
-                alt="Splash Logo" 
-                class="w-full h-full object-cover" 
-              />
+              <img src="https://lh3.googleusercontent.com/d/1yak4qUpNBbl-RFSSSd5ra8hz_Ladgztc" alt="Splash Logo" class="w-full h-full object-cover" />
             </div>
             <p class="text-slate-400 text-sm mt-4 font-medium tracking-wide">MY-FINANCE-PRO</p>
           </div>
@@ -569,18 +457,14 @@
                 class="w-full text-center text-3xl tracking-widest bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 autoFocus
               />
-
               {pinError && <p class="text-red-400 text-xs mb-4">{pinError}</p>}
-
-              <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 font-semibold py-3 rounded-xl transition shadow-lg">
+              <button type="submit" class="btn-active w-full bg-blue-600 hover:bg-blue-500 font-semibold py-3 rounded-xl transition shadow-lg">
                 បើកសោ
               </button>
             </form>
 
             {isBiometricEnabled && (
-              <button
-                onClick={handleBiometricAuth}
-                class="mt-6 flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm py-2 px-4 rounded-lg bg-slate-800/50">
+              <button onClick={handleBiometricAuth} class="btn-active mt-6 flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm py-2 px-4 rounded-lg bg-slate-800/50">
                 <i data-lucide="scan-face" class="w-5 h-5"></i>
                 <span>ប្រើប្រាស់ Face ID / ក្រយៅដៃ</span>
               </button>
@@ -592,13 +476,10 @@
       return (
         <div class="flex flex-col h-full max-w-md mx-auto bg-[#F8FAFC] dark:bg-slate-900 border-x border-slate-200 dark:border-slate-800 relative shadow-2xl pt-safe">
           
-          {/* Main Content Body - បង្កើន pb-40 ដើម្បីកុំឱ្យបាំងមេនូខាងក្រោម */}
           <main class="flex-1 overflow-y-auto ios-scroll p-4 pb-40 space-y-4 no-scrollbar">
             
-            {/* Tab: Home */}
             {activeTab === 'home' && (
               <>
-                {/* Dashboard Card */}
                 <div class="bg-gradient-to-br from-[#0F172A] via-[#1E1B4B] to-[#311042] text-white p-5 rounded-3xl shadow-xl space-y-4">
                   <div class="flex justify-between items-center">
                     <div class="flex items-center gap-1.5 text-xs text-slate-300">
@@ -610,15 +491,15 @@
                       <select 
                         value={timeFilter} 
                         onChange={(e) => { triggerHaptic(); setTimeFilter(e.target.value); }}
-                        class="h-[20px] px-2.5 text-5px font-bold bg-white/10 hover:bg-white/30 rounded-lg transition text-white border-white/20 focus:outline-none text-center">
+                        class="h-[20px] px-2.5 text-5px font-bold bg-white/10 rounded-lg text-white border-white/20 focus:outline-none text-center">
                         <option value="all" class="bg-slate-900 text-white">ទាំងអស់</option>
                         <option value="thisMonth" class="bg-slate-900 text-white">ខែនេះ</option>
                         <option value="lastMonth" class="bg-slate-900 text-white">ខែមុន</option>
                       </select>
 
                       <button 
-                        onClick={() => { triggerHaptic(); setCurrency(currency === 'USD' ? 'KHR' : 'USD'); }}
-                        class="h-[20px] px-3 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-lg transition text-white text-center flex items-center justify-center">
+                        onClick={() => { triggerHaptic(); setCurrency(c => c === 'USD' ? 'KHR' : 'USD'); }}
+                        class="btn-active h-[20px] px-3 text-xs font-bold bg-white/20 rounded-lg text-white text-center flex items-center justify-center">
                         {currency}
                       </button>
                     </div>
@@ -652,7 +533,6 @@
                   </div>
                 </div>
 
-                {/* Wallet Balances Horizontal Scroll */}
                 <div>
                   <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">កាតាបប្រាក់របស់អ្នក</h3>
                   <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1">
@@ -665,7 +545,6 @@
                   </div>
                 </div>
 
-                {/* Search & Category Filter */}
                 <div class="space-y-2.5">
                   <div class="relative">
                     <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
@@ -683,14 +562,13 @@
                       <button
                         key={idx}
                         onClick={() => { triggerHaptic(); setSelectedCategoryFilter(cat); }}
-                        class={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition shadow-sm ${selectedCategoryFilter === cat ? 'bg-blue-600 text-white shadow-blue-600/20' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700'}`}>
+                        class={`btn-active px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shadow-sm ${selectedCategoryFilter === cat ? 'bg-blue-600 text-white shadow-blue-600/20' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700'}`}>
                         {cat}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Transactions List */}
                 <div class="space-y-2">
                   <div class="flex justify-between items-center">
                     <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ប្រវត្តិប្រតិបត្តិការ</h3>
@@ -704,7 +582,7 @@
                     </div>
                   ) : (
                     finalDisplayTransactions.map(t => (
-                      <div key={t.id} class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex justify-between items-center shadow-sm hover:border-slate-300 transition">
+                      <div key={t.id} class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex justify-between items-center shadow-sm">
                         <div class="flex items-center gap-3">
                           <div class={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${t.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
                             <i data-lucide={t.type === 'income' ? 'arrow-down-left' : 'arrow-up-right'} class="w-5 h-5"></i>
@@ -713,9 +591,7 @@
                             <div class="flex items-center gap-1.5">
                               <h4 class="font-semibold text-sm text-slate-800 dark:text-slate-100">{t.title}</h4>
                               {t.receipt && (
-                                <button 
-                                  onClick={() => setSelectedReceipt(t.receipt)}
-                                  class="text-blue-500 hover:text-blue-600">
+                                <button onClick={() => setSelectedReceipt(t.receipt)} class="btn-active text-blue-500">
                                   <i data-lucide="image" class="w-3.5 h-3.5"></i>
                                 </button>
                               )}
@@ -734,9 +610,7 @@
                           <span class={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {t.type === 'income' ? '+' : '-'}{formatMoney(t.amount)}
                           </span>
-                          <button 
-                            onClick={() => handleDelete(t.id)} 
-                            class="text-slate-300 hover:text-red-500 p-1 transition">
+                          <button onClick={() => handleDelete(t.id)} class="btn-active text-slate-300 hover:text-red-500 p-1">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                           </button>
                         </div>
@@ -747,7 +621,6 @@
               </>
             )}
 
-            {/* Tab: Analytics */}
             {activeTab === 'analytics' && (
               <div class="space-y-4">
                 <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm">
@@ -780,10 +653,7 @@
                             </span>
                           </div>
                           <div class="w-full h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                            <div 
-                              class={`h-full transition-all ${catSpent > limit ? 'bg-red-500' : 'bg-blue-500'}`} 
-                              style={{ width: `${pct}%` }}>
-                            </div>
+                            <div class={`h-full ${catSpent > limit ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }}></div>
                           </div>
                         </div>
                       );
@@ -793,7 +663,6 @@
               </div>
             )}
 
-            {/* Tab: Features */}
             {activeTab === 'features' && (
               <div class="space-y-4">
                 <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-2.5">
@@ -805,7 +674,7 @@
                   </div>
                   <div class="w-full h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div 
-                      class={`h-full transition-all duration-300 ${totalExpenseUSD > budgetLimit ? 'bg-red-500' : 'bg-blue-600'}`}
+                      class={`h-full ${totalExpenseUSD > budgetLimit ? 'bg-red-500' : 'bg-blue-600'}`}
                       style={{ width: `${Math.min((totalExpenseUSD / (budgetLimit || 1)) * 100, 100)}%` }}>
                     </div>
                   </div>
@@ -817,26 +686,6 @@
                     គោលដៅសន្សំប្រាក់ (Savings Goals)
                   </h3>
 
-                  <form onSubmit={handleAddGoal} class="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="ឈ្មោះគោលដៅ" 
-                      value={goalTitle}
-                      onChange={(e) => setGoalTitle(e.target.value)}
-                      class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs"
-                    />
-                    <input 
-                      type="number" 
-                      placeholder="គោលដៅ ($)" 
-                      value={goalTarget}
-                      onChange={(e) => setGoalTarget(e.target.value)}
-                      class="w-24 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs"
-                    />
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm">
-                      បន្ថែម
-                    </button>
-                  </form>
-
                   <div class="space-y-3 pt-2">
                     {savingsGoals.map(g => {
                       const pct = Math.min((g.current / g.target) * 100, 100);
@@ -847,74 +696,16 @@
                             <span class="text-emerald-500 font-semibold">${g.current} / ${g.target} ({pct.toFixed(0)}%)</span>
                           </div>
                           <div class="w-full h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
-                            <div class="h-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }}></div>
+                            <div class="h-full bg-emerald-500" style={{ width: `${pct}%` }}></div>
                           </div>
-                          <button 
-                            onClick={() => handleDepositGoal(g.id)}
-                            class="w-full text-center py-1 text-xs text-blue-500 hover:text-blue-600 font-medium">
-                            + ថែមថវិកាសន្សំ
-                          </button>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-
-                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3">
-                  <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                    <i data-lucide="bell" class="w-4 h-4 text-amber-500"></i>
-                    រំលឹកបង់ប្រាក់ប្រចាំខែ (Bill Reminders)
-                  </h3>
-
-                  <form onSubmit={handleAddBill} class="grid grid-cols-2 gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="ឈ្មោះវិក្កយបត្រ" 
-                      value={billTitle}
-                      onChange={(e) => setBillTitle(e.target.value)}
-                      class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs col-span-2"
-                    />
-                    <input 
-                      type="number" 
-                      placeholder="ចំនួនទឹកប្រាក់ ($)" 
-                      value={billAmount}
-                      onChange={(e) => setBillAmount(e.target.value)}
-                      class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs"
-                    />
-                    <input 
-                      type="date" 
-                      value={billDueDate}
-                      onChange={(e) => setBillDueDate(e.target.value)}
-                      class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs text-slate-400"
-                    />
-                    <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white py-2 rounded-xl text-xs font-semibold col-span-2 shadow-sm">
-                      កំណត់រំលឹក
-                    </button>
-                  </form>
-
-                  <div class="space-y-2 pt-2">
-                    {reminders.map(b => (
-                      <div key={b.id} class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <div>
-                          <p class="text-xs font-bold text-slate-800 dark:text-slate-100">{b.title}</p>
-                          <p class="text-[10px] text-amber-500">កាលកំណត់៖ {b.dueDate}</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                          <span class="text-xs font-bold">${b.amount}</span>
-                          <button 
-                            onClick={() => handlePayBill(b)}
-                            class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-[11px] font-semibold shadow-sm">
-                            ទូទាត់
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             )}
 
-            {/* Tab: Settings */}
             {activeTab === 'settings' && (
               <div class="space-y-4">
                 <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm flex items-center justify-between">
@@ -924,96 +715,22 @@
                   </div>
                   <button 
                     onClick={() => { triggerHaptic(); setDarkMode(!darkMode); }}
-                    class={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${darkMode ? 'bg-blue-600' : 'bg-slate-300'}`}>
-                    <div class={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${darkMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                    class={`btn-active w-12 h-6 flex items-center rounded-full p-1 ${darkMode ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                    <div class={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${darkMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
                   </button>
                 </div>
 
                 <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3">
                   <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">សុវត្ថិភាព (PIN Code & Biometrics)</h3>
-                  
-                  <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700">
-                    <span class="text-xs text-slate-600 dark:text-slate-300">ស្ថានភាពលេខ PIN</span>
-                    <span class="text-xs font-bold text-blue-500">{savedPin ? 'បានកំណត់រួច' : 'មិនទាន់កំណត់'}</span>
-                  </div>
-
                   <div class="flex gap-2">
                     <button 
                       onClick={() => {
-                        const pin = prompt('បញ្ចូលលេខកូដ PIN ថ្មី ៤ ឬ ៦ ខ្ទង់៖');
+                        const pin = prompt('បញ្ចូលលេខកូដ PIN ថ្មី៖');
                         if (pin !== null) handleSetPin(pin);
                       }}
-                      class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-semibold transition shadow-sm">
+                      class="btn-active flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-xs font-semibold shadow-sm">
                       {savedPin ? 'ផ្លាស់ប្ដូរ PIN' : 'កំណត់លេខ PIN'}
                     </button>
-                    {savedPin && (
-                      <button 
-                        onClick={() => handleSetPin('')}
-                        class="bg-red-500 hover:bg-red-600 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold transition shadow-sm">
-                        លុប PIN
-                      </button>
-                    )}
-                  </div>
-
-                  <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
-                    <button 
-                      onClick={handleRegisterBiometric}
-                      class="w-full flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 py-2.5 rounded-xl text-xs font-semibold transition">
-                      <i data-lucide="scan-face" class="w-4 h-4 text-blue-500"></i>
-                      <span>{isBiometricEnabled ? 'ចុះឈ្មោះ Face ID/ក្រយៅដៃ ឡើងវិញ' : 'បើកប្រើប្រាស់ Face ID / ក្រយៅដៃ'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3">
-                  <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">កំណត់ថវិកាប្រចាំខែ (Monthly Budget)</h3>
-                  <div class="flex gap-2">
-                    <input 
-                      type="number" 
-                      value={tempBudget}
-                      onChange={(e) => setTempBudget(e.target.value)}
-                      class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs"
-                    />
-                    <button 
-                      onClick={() => {
-                        triggerHaptic();
-                        const val = parseFloat(tempBudget);
-                        if (val > 0) {
-                          setBudgetLimit(val);
-                          localStorage.setItem('budgetLimit', val);
-                          alert('បានរក្សាទុកថវិកាថ្មី!');
-                        }
-                      }}
-                      class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm">
-                      រក្សាទុក
-                    </button>
-                  </div>
-                </div>
-
-                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3">
-                  <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">ទិន្នន័យ & របាយការណ៍</h3>
-                  
-                  <div class="grid grid-cols-2 gap-2">
-                    <button onClick={exportToCSV} class="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-200 transition">
-                      <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-500"></i>
-                      <span>ទាញយក CSV</span>
-                    </button>
-
-                    <button onClick={exportToPDF} class="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-200 transition">
-                      <i data-lucide="printer" class="w-4 h-4 text-blue-500"></i>
-                      <span>បោះពុម្ព PDF</span>
-                    </button>
-
-                    <button onClick={handleExportJSON} class="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-200 transition">
-                      <i data-lucide="download" class="w-4 h-4 text-purple-500"></i>
-                      <span>Backup JSON</span>
-                    </button>
-
-                    <button onClick={() => fileInputRef.current && fileInputRef.current.click()} class="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-200 transition">
-                      <i data-lucide="upload" class="w-4 h-4 text-amber-500"></i>
-                      <span>Restore JSON</span>
-                    </button>
-                    <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" class="hidden" />
                   </div>
                 </div>
               </div>
@@ -1021,53 +738,50 @@
 
           </main>
 
-          {/* Bottom Navigation (បានបន្ថែម pt-3 និង pb-safe ថ្មី ដើម្បីឱ្យមេនូផុសផុតបន្ទាត់ Home របស់ iPhone) */}
           <nav class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center px-4 pt-3 pb-safe fixed bottom-0 left-0 right-0 max-w-md mx-auto z-10 shadow-lg">
             <button 
               onClick={() => { triggerHaptic(); setActiveTab('home'); }}
-              class={`flex flex-col items-center gap-1 transition ${activeTab === 'home' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
+              class={`btn-active flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
               <i data-lucide="home" class="w-5 h-5"></i>
               <span class="text-[11px]">ទំព័រដើម</span>
             </button>
 
             <button 
               onClick={() => { triggerHaptic(); setActiveTab('analytics'); }}
-              class={`flex flex-col items-center gap-1 transition ${activeTab === 'analytics' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
+              class={`btn-active flex flex-col items-center gap-1 ${activeTab === 'analytics' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
               <i data-lucide="pie-chart" class="w-5 h-5"></i>
               <span class="text-[11px]">វិភាគ</span>
             </button>
 
-            {/* Middle Floating Add Button */}
             <div class="relative -top-4">
               <button 
                 onClick={() => { triggerHaptic(); setShowForm(true); }}
-                class="w-12 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-600/30 transition transform active:scale-95">
+                class="btn-active w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-600/30">
                 <i data-lucide="plus" class="w-6 h-6"></i>
               </button>
             </div>
 
             <button 
               onClick={() => { triggerHaptic(); setActiveTab('features'); }}
-              class={`flex flex-col items-center gap-1 transition ${activeTab === 'features' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
+              class={`btn-active flex flex-col items-center gap-1 ${activeTab === 'features' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
               <i data-lucide="sparkles" class="w-5 h-5"></i>
               <span class="text-[11px]">មុខងារ</span>
             </button>
 
             <button 
               onClick={() => { triggerHaptic(); setActiveTab('settings'); }}
-              class={`flex flex-col items-center gap-1 transition ${activeTab === 'settings' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
+              class={`btn-active flex flex-col items-center gap-1 ${activeTab === 'settings' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 font-normal'}`}>
               <i data-lucide="settings" class="w-5 h-5"></i>
               <span class="text-[11px]">ការកំណត់</span>
             </button>
           </nav>
 
-          {/* Add Transaction Modal */}
           {showForm && (
             <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
               <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
                   <h3 class="font-bold text-base text-slate-800 dark:text-slate-100">បន្ថែមប្រតិបត្តិការ</h3>
-                  <button onClick={() => setShowForm(false)} class="text-slate-400 hover:text-slate-600">
+                  <button onClick={() => setShowForm(false)} class="btn-active text-slate-400">
                     <i data-lucide="x" class="w-5 h-5"></i>
                   </button>
                 </div>
@@ -1077,13 +791,13 @@
                     <button 
                       type="button"
                       onClick={() => { triggerHaptic(); setType('expense'); }}
-                      class={`flex-1 py-2.5 rounded-xl transition ${type === 'expense' ? 'bg-rose-500 text-white shadow' : 'text-slate-500'}`}>
+                      class={`btn-active flex-1 py-2.5 rounded-xl ${type === 'expense' ? 'bg-rose-500 text-white shadow' : 'text-slate-500'}`}>
                       ចំណាយ
                     </button>
                     <button 
                       type="button"
                       onClick={() => { triggerHaptic(); setType('income'); }}
-                      class={`flex-1 py-2.5 rounded-xl transition ${type === 'income' ? 'bg-emerald-500 text-white shadow' : 'text-slate-500'}`}>
+                      class={`btn-active flex-1 py-2.5 rounded-xl ${type === 'income' ? 'bg-emerald-500 text-white shadow' : 'text-slate-500'}`}>
                       ចំណូល
                     </button>
                   </div>
@@ -1115,78 +829,17 @@
                     </div>
                     <div>
                       <label class="block text-xs font-semibold text-slate-500 mb-1">រូបិយវត្ថុ</label>
-                      <select 
-                        value={formCurrency}
-                        onChange={(e) => setFormCurrency(e.target.value)}
-                        class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl px-2 py-3 text-xs font-semibold">
+                      <select value={formCurrency} onChange={(e) => setFormCurrency(e.target.value)} class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl px-2 py-3 text-xs font-semibold">
                         <option value="USD">USD ($)</option>
                         <option value="KHR">KHR (៛)</option>
                       </select>
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-2 gap-2">
-                    <div>
-                      <label class="block text-xs font-semibold text-slate-500 mb-1">ប្រភេទ</label>
-                      <select 
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl px-3 py-3 text-xs">
-                        {CATEGORIES.map((c, i) => <option key={i} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label class="block text-xs font-semibold text-slate-500 mb-1">ប្រភព/កាតាប</label>
-                      <select 
-                        value={wallet}
-                        onChange={(e) => setWallet(e.target.value)}
-                        class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl px-3 py-3 text-xs">
-                        {WALLETS.map((w, i) => <option key={i} value={w}>{w}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">ភ្ជាប់រូបថតវិក្កយបត្រ</label>
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 dark:file:bg-slate-700 dark:file:text-slate-200"
-                    />
-                    {receiptImage && (
-                      <div class="mt-2 w-16 h-16 rounded-xl overflow-hidden border border-slate-300">
-                        <img src={receiptImage} alt="Receipt Preview" class="w-full h-full object-cover" />
-                      </div>
-                    )}
-                  </div>
-
-                  <button 
-                    type="submit" 
-                    disabled={loading}
-                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg flex items-center justify-center gap-2">
-                    {loading ? (
-                      <i data-lucide="refresh-cw" class="w-5 h-5 animate-spin"></i>
-                    ) : (
-                      <span>រក្សាទុកទិន្នន័យ</span>
-                    )}
+                  <button type="submit" disabled={loading} class="btn-active w-full bg-blue-600 text-white font-bold py-3.5 rounded-2xl shadow-lg flex items-center justify-center gap-2">
+                    {loading ? <i data-lucide="refresh-cw" class="w-5 h-5 animate-spin"></i> : <span>រក្សាទុកទិន្នន័យ</span>}
                   </button>
                 </form>
-              </div>
-            </div>
-          )}
-
-          {/* View Receipt Image Modal */}
-          {selectedReceipt && (
-            <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-              <div class="relative max-w-sm w-full bg-slate-900 p-2 rounded-3xl">
-                <button 
-                  onClick={() => setSelectedReceipt(null)}
-                  class="absolute top-4 right-4 bg-slate-800 text-white p-2 rounded-full z-10">
-                  <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-                <img src={selectedReceipt} alt="Receipt" class="w-full h-auto rounded-2xl object-contain max-h-[80vh]" />
               </div>
             </div>
           )}
