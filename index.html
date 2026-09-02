@@ -95,14 +95,12 @@
     const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbw1WaEV2kj4z7sgz9mls0vVL4xsX0c-PQ9eWzlJg-it3vaTmhH6FJrbPDM7KG8cu1OCdg/exec";
 
     const CATEGORIES = [
-      'ម្ហូបអាហារ', 'ធ្វើដំណើរ/ថ្លៃសាំង', 'ការកម្សាន្ត', 
-      'ការសិក្សា', 'ទិញអីវ៉ាន់/សម្ភារៈ', 'ផ្ទះ/ទឹកភ្លើង', 
+      'ម្ហូបអាហារ', 'ធ្វើដំណើរ/ថ្លៃសាំង', 'បង់ធនាគារ', 'ទិញអីវ៉ាន់/សម្ភារៈ', 'ផ្ទះ/ទឹកភ្លើង', 
       'សុខភាព', 'ទូទៅ'
     ];
 
     const WALLETS = ['លុយសុទ្ធ (Cash)', 'ABA Bank', 'ACLEDA Bank', 'Brasac Bank'];
 
-    // កំណត់ពណ៌សញ្ញាផ្សេងៗគ្នាសម្រាប់ប្រភេទនីមួយៗ
     const getCategoryColor = (cat) => {
       switch(cat) {
         case 'ម្ហូបអាហារ': return 'bg-amber-500';
@@ -148,15 +146,6 @@
         return local ? JSON.parse(local) : { 'ម្ហូបអាហារ': 150, 'ការកម្សាន្ត': 50 };
       });
 
-      const [savingsGoals, setSavingsGoals] = useState(() => {
-        const local = localStorage.getItem('savings_goals');
-        return local ? JSON.parse(local) : [
-          { id: 1, title: 'ទិញទូរស័ព្ទថ្មី', target: 800, current: 350 }
-        ];
-      });
-      const [goalTitle, setGoalTitle] = useState('');
-      const [goalTarget, setGoalTarget] = useState('');
-
       const [reminders, setReminders] = useState(() => {
         const local = localStorage.getItem('bill_reminders');
         return local ? JSON.parse(local) : [
@@ -178,9 +167,6 @@
       const [activeCurrencyIndex, setActiveCurrencyIndex] = useState(0);
       const currencySliderRef = useRef(null);
 
-      const [budgetLimit, setBudgetLimit] = useState(() => parseFloat(localStorage.getItem('budgetLimit')) || 500);
-      const [tempBudget, setTempBudget] = useState(budgetLimit);
-
       const [title, setTitle] = useState('');
       const [amount, setAmount] = useState('');
       const [formCurrency, setFormCurrency] = useState('USD');
@@ -196,7 +182,6 @@
 
       useEffect(() => { localStorage.setItem('local_transactions_expense', JSON.stringify(transactions)); }, [transactions]);
       useEffect(() => { localStorage.setItem('category_budgets', JSON.stringify(categoryBudgets)); }, [categoryBudgets]);
-      useEffect(() => { localStorage.setItem('savings_goals', JSON.stringify(savingsGoals)); }, [savingsGoals]);
       useEffect(() => { localStorage.setItem('bill_reminders', JSON.stringify(reminders)); }, [reminders]);
 
       useEffect(() => {
@@ -225,7 +210,7 @@
         if (window.lucide && !showSplash) {
           setTimeout(() => window.lucide.createIcons(), 30);
         }
-      }, [transactions, showForm, activeTab, activeCurrencyIndex, selectedCategoryFilter, timeFilter, syncing, isLocked, darkMode, showSplash, isBiometricEnabled, selectedReceipt, savingsGoals, reminders, categoryBudgets]);
+      }, [transactions, showForm, activeTab, activeCurrencyIndex, selectedCategoryFilter, timeFilter, syncing, isLocked, darkMode, showSplash, isBiometricEnabled, selectedReceipt, reminders, categoryBudgets]);
 
       const handleScrollSlider = (e) => {
         const scrollLeft = e.target.scrollLeft;
@@ -377,30 +362,6 @@
         }
       };
 
-      const handleAddGoal = (ev) => {
-        ev.preventDefault();
-        if (!goalTitle || !goalTarget) return;
-        const newGoal = { id: Date.now(), title: goalTitle, target: parseFloat(goalTarget), current: 0 };
-        setSavingsGoals([...savingsGoals, newGoal]);
-        setGoalTitle(''); setGoalTarget('');
-      };
-
-      const handleDeleteGoal = (id) => {
-        triggerHaptic();
-        if (confirm('តើអ្នកពិតជាចង់លុបគោលដៅសន្សំប្រាក់នេះមែនទេ?')) {
-          setSavingsGoals(savingsGoals.filter(g => g.id !== id));
-        }
-      };
-
-      const handleDepositGoal = (id) => {
-        const amountStr = prompt('បញ្ចូលចំនួនទឹកប្រាក់ដែលត្រូវសន្សំថែម ($)៖');
-        const depositVal = parseFloat(amountStr);
-        if (depositVal && depositVal > 0) {
-          setSavingsGoals(savingsGoals.map(g => g.id === id ? { ...g, current: g.current + depositVal } : g));
-          triggerHaptic();
-        }
-      };
-
       const handleAddBill = (ev) => {
         ev.preventDefault();
         if (!billTitle || !billAmount || !billDueDate) return;
@@ -481,8 +442,8 @@
       const totalExpenseKHR = dateFilteredTransactions.filter(t => t.currency === 'KHR').reduce((a, c) => a + c.amount, 0);
 
       const walletBalances = WALLETS.map(w => {
-        const wExpenseUSD = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && (!t.currency || t.currency === 'USD')).reduce((a, c) => a + c.amount, 0);
-        const wExpenseKHR = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.currency === 'KHR').reduce((a, c) => a + c.amount, 0);
+        const wExpenseUSD = dateFilteredTransactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && (!t.currency || t.currency === 'USD')).reduce((a, c) => a + c.amount, 0);
+        const wExpenseKHR = dateFilteredTransactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.currency === 'KHR').reduce((a, c) => a + c.amount, 0);
 
         return { 
           name: w, 
@@ -595,7 +556,7 @@
                 onScroll: handleScrollSlider,
                 class: "flex overflow-x-auto snap-x-mandatory no-scrollbar rounded-3xl shadow-xl scroll-smooth" 
               },
-                // Card 1: ពណ៌ខៀវដិត (Gradient Blue/Indigo)
+                // Card 1: ពណ៌ខៀវដិត (កាតដុល្លារ បង្ហាញតែដុល្លារ) - កែតម្រូវកាតាបឱ្យតូចល្មមតាមកាត (fit-content/inline-flex)
                 e('div', { class: "min-w-full snap-center bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 text-white p-5 flex-shrink-0 space-y-4 rounded-3xl" },
                   e('div', { class: "flex justify-between items-center" },
                     e('div', { class: "flex items-center gap-1.5 text-xs text-slate-300" },
@@ -616,12 +577,23 @@
                     )
                   ),
                   e('div', null,
-                    e('h2', { class: "text-3xl font-extrabold tracking-tight mt-1 text-blue-300" }, '$' + totalExpenseUSD.toFixed(2)),
-                    e('p', { class: "text-xs text-slate-400 mt-0.5" }, "អូសទៅស្តាំដើម្បីមើលការចំណាយជាប្រាក់រៀល(KHR)")
+                    e('h2', { class: "text-4xl font-extrabold tracking-tight mt-1 text-blue-300" }, '$' + totalExpenseUSD.toFixed(2)),
+                    e('p', { class: "text-xs text-slate-400 mt-0.5" }, "ទិន្នន័យចំណាយប្រាក់ដុល្លារសុទ្ធ ($)")
+                  ),
+                  e('div', { class: "pt-2 border-t border-white/10" },
+                    e('p', { class: "text-[11px] font-bold text-slate-300 mb-2 uppercase tracking-wider" }, "ការចំណាយតាមកាតាប (ដុល្លារ)")
+                  ),
+                  e('div', { class: "flex gap-2 overflow-x-auto no-scrollbar pb-1" },
+                    walletBalances.map((w, idx) =>
+                      e('div', { key: idx, class: "inline-flex flex-col bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 flex-shrink-0 space-y-0.5 w-auto" },
+                        e('p', { class: "text-[11px] text-slate-300 font-medium whitespace-nowrap" }, w.name),
+                        e('p', { class: "text-xs font-bold text-blue-300 whitespace-nowrap" }, `$${w.balanceUSD.toFixed(2)}`)
+                      )
+                    )
                   )
                 ),
 
-                // Card 2: ពណ៌បៃតងទាក់ទាញ (Gradient Teal/Emerald)
+                // Card 2: ពណ៌បៃតងទាក់ទាញ (កាតរៀល បង្ហាញតែលុយខ្មែរ KHR) - កែតម្រូវកាតាបឱ្យតូចល្មមតាមកាត
                 e('div', { class: "min-w-full snap-center bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 text-white p-5 flex-shrink-0 space-y-4 rounded-3xl" },
                   e('div', { class: "flex justify-between items-center" },
                     e('div', { class: "flex items-center gap-1.5 text-xs text-slate-300" },
@@ -643,7 +615,18 @@
                   ),
                   e('div', null,
                     e('h2', { class: "text-3xl font-extrabold tracking-tight mt-1 text-emerald-300" }, totalExpenseKHR.toLocaleString('km-KH') + ' ៛'),
-                    e('p', { class: "text-xs text-slate-400 mt-0.5" }, "ទិន្នន័យចំណាយប្រាក់រៀលសុទ្ធសាធ")
+                    e('p', { class: "text-xs text-slate-400 mt-0.5" }, "ទិន្នន័យចំណាយប្រាក់រៀលសុទ្ធ (៛)")
+                  ),
+                  e('div', { class: "pt-2 border-t border-white/10" },
+                    e('p', { class: "text-[11px] font-bold text-slate-300 mb-2 uppercase tracking-wider" }, "ការចំណាយតាមកាតាប (រៀល)")
+                  ),
+                  e('div', { class: "flex gap-2 overflow-x-auto no-scrollbar pb-1" },
+                    walletBalances.map((w, idx) =>
+                      e('div', { key: idx, class: "inline-flex flex-col bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 flex-shrink-0 space-y-0.5 w-auto" },
+                        e('p', { class: "text-[11px] text-slate-300 font-medium whitespace-nowrap" }, w.name),
+                        e('p', { class: "text-xs font-bold text-emerald-300 whitespace-nowrap" }, `${w.balanceKHR.toLocaleString('km-KH')} ៛`)
+                      )
+                    )
                   )
                 )
               ),
@@ -663,19 +646,6 @@
                   },
                   class: `h-1.5 rounded-full transition-all duration-300 ${activeCurrencyIndex === 1 ? 'w-6 bg-emerald-500' : 'w-1.5 bg-slate-300 dark:bg-slate-700'}`
                 })
-              )
-            ),
-
-            e('div', null,
-              e('h3', { class: "text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider" }, "ការចំណាយតាមកាតាប"),
-              e('div', { class: "flex gap-3 overflow-x-auto no-scrollbar pb-1" },
-                walletBalances.map((w, idx) =>
-                  e('div', { key: idx, class: "min-w-[150px] bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex-shrink-0 shadow-sm space-y-1" },
-                    e('p', { class: "text-xs text-slate-500 dark:text-slate-400 font-medium truncate" }, w.name),
-                    e('p', { class: "text-xs font-bold text-blue-600 dark:text-blue-400" }, `USD: $${w.balanceUSD.toFixed(2)}`),
-                    e('p', { class: "text-xs font-bold text-emerald-600 dark:text-emerald-400" }, `KHR: ${w.balanceKHR.toLocaleString('km-KH')} ៛`)
-                  )
-                )
               )
             ),
 
@@ -714,7 +684,6 @@
                 finalDisplayTransactions.map(t =>
                   e('div', { key: t.id, class: "bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex justify-between items-center shadow-sm hover:border-slate-300 transition" },
                     e('div', { class: "flex items-center gap-3" },
-                      // កន្លែងបង្ហាញរូបតំណាងពណ៌ផ្សេងៗគ្នាទៅតាមប្រភេទចំណាយ (Category Color)
                       e('div', { class: `w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${getCategoryColor(t.category)}` },
                         e('i', { 'data-lucide': "arrow-up-right", class: "w-5 h-5" })
                       ),
@@ -789,67 +758,6 @@
           ),
 
           activeTab === 'features' && e('div', { class: "space-y-4" },
-            e('div', { class: "bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-2.5" },
-              e('div', { class: "flex justify-between items-center text-xs" },
-                e('span', { class: "font-semibold text-slate-600 dark:text-slate-300" }, "កម្រិតថវិកាចំណាយ (Monthly Budget - USD)"),
-                e('span', { class: "font-bold text-blue-600 dark:text-blue-400" }, `$${totalExpenseUSD.toFixed(2)} / $${budgetLimit}`)
-              ),
-              e('div', { class: "w-full h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden" },
-                e('div', {
-                  class: `h-full transition-all duration-300 ${totalExpenseUSD > budgetLimit ? 'bg-red-500' : 'bg-blue-600'}`,
-                  style: { width: `${Math.min((totalExpenseUSD / (budgetLimit || 1)) * 100, 100)}%` }
-                })
-              )
-            ),
-
-            e('div', { class: "bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3" },
-              e('h3', { class: "font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2" },
-                e('i', { 'data-lucide': "target", class: "w-4 h-4 text-emerald-500" }),
-                "គោលដៅសន្សំប្រាក់ (Savings Goals)"
-              ),
-              e('form', { onSubmit: handleAddGoal, class: "grid grid-cols-1 gap-2" },
-                e('div', { class: "flex gap-2" },
-                  e('input', {
-                    type: "text",
-                    placeholder: "ឈ្មោះគោលដៅ",
-                    value: goalTitle,
-                    onChange: (ev) => setGoalTitle(ev.target.value),
-                    class: "flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs"
-                  }),
-                  e('input', {
-                    type: "number",
-                    placeholder: "គោលដៅ ($)",
-                    value: goalTarget,
-                    onChange: (ev) => setGoalTarget(ev.target.value),
-                    class: "w-28 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs"
-                  })
-                ),
-                e('button', { type: "submit", class: "w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl text-xs font-semibold shadow-sm btn-act" }, "បន្ថែមគោលដៅ")
-              ),
-              e('div', { class: "space-y-3 pt-2" },
-                savingsGoals.map(g => {
-                  const pct = Math.min((g.current / g.target) * 100, 100);
-                  return e('div', { key: g.id, class: "bg-slate-50 dark:bg-slate-700/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 relative" },
-                    e('div', { class: "flex justify-between items-center text-xs pr-6" },
-                      e('span', { class: "font-bold" }, g.title),
-                      e('span', { class: "text-emerald-500 font-semibold" }, `$${g.current} / $${g.target} (${pct.toFixed(0)}%)`)
-                    ),
-                    e('button', {
-                      onClick: () => handleDeleteGoal(g.id),
-                      class: "absolute top-3 right-3 text-slate-400 hover:text-red-500 transition btn-act"
-                    }, e('i', { 'data-lucide': "trash-2", class: "w-4 h-4" })),
-                    e('div', { class: "w-full h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden" },
-                      e('div', { class: "h-full bg-emerald-500 transition-all", style: { width: `${pct}%` } })
-                    ),
-                    e('button', {
-                      onClick: () => handleDepositGoal(g.id),
-                      class: "w-full text-center py-1 text-xs text-blue-500 hover:text-blue-600 font-medium btn-act"
-                    }, "+ ថែមថវិកាសន្សំ")
-                  );
-                })
-              )
-            ),
-
             e('div', { class: "bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3" },
               e('h3', { class: "font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2" },
                 e('i', { 'data-lucide': "bell", class: "w-4 h-4 text-amber-500" }),
@@ -939,30 +847,6 @@
                   e('i', { 'data-lucide': "scan-face", class: "w-4 h-4 text-blue-500" }),
                   e('span', null, isBiometricEnabled ? 'ចុះឈ្មោះ Face ID/ក្រយៅដៃ ឡើងវិញ' : 'បើកប្រើប្រាស់ Face ID / ក្រយៅដៃ')
                 )
-              )
-            ),
-
-            e('div', { class: "bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3" },
-              e('h3', { class: "font-bold text-sm text-slate-800 dark:text-slate-100" }, "កំណត់ថវិកាប្រចាំខែ (Monthly Budget - USD)"),
-              e('div', { class: "flex gap-2" },
-                e('input', {
-                  type: "number",
-                  value: tempBudget,
-                  onChange: (ev) => setTempBudget(ev.target.value),
-                  class: "flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-xs"
-                }),
-                e('button', {
-                  onClick: () => {
-                    triggerHaptic();
-                    const val = parseFloat(tempBudget);
-                    if (val > 0) {
-                      setBudgetLimit(val);
-                      localStorage.setItem('budgetLimit', val);
-                      alert('បានរក្សាទុកថវិកាថ្មី!');
-                    }
-                  },
-                  class: "bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm btn-act"
-                }, "រក្សាទុក")
               )
             ),
 
