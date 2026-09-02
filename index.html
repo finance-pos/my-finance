@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>កម្មវិធីគ្រប់គ្រងហិរញ្ញវត្ថុ Pro</title>
+  <title>កម្មវិធីគ្រប់គ្រងការចំណាយ Pro</title>
 
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="iconfinances.png">
@@ -12,7 +12,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="ហិរញ្ញវត្ថុ">
+  <meta name="apple-mobile-web-app-title" content="ការចំណាយ">
   <meta name="theme-color" content="#0F172A">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -93,15 +93,28 @@
     const { useState, useEffect, useRef } = React;
 
     const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbw1WaEV2kj4z7sgz9mls0vVL4xsX0c-PQ9eWzlJg-it3vaTmhH6FJrbPDM7KG8cu1OCdg/exec";
-    const EXCHANGE_RATE = 4100;
 
     const CATEGORIES = [
-      'ម្ហូបអាហារ', 'ធ្វើដំណើរ/ថ្លៃសាំង', 'ការងារ/ប្រាក់ខែ', 
-      'ការកម្សាន្ត', 'ការសិក្សា', 'ទិញអីវ៉ាន់/សម្ភារៈ', 
-      'ផ្ទះ/ទឹកភ្លើង', 'សុខភាព', 'ទូទៅ'
+      'ម្ហូបអាហារ', 'ធ្វើដំណើរ/ថ្លៃសាំង', 'ការកម្សាន្ត', 
+      'ការសិក្សា', 'ទិញអីវ៉ាន់/សម្ភារៈ', 'ផ្ទះ/ទឹកភ្លើង', 
+      'សុខភាព', 'ទូទៅ'
     ];
 
-    const WALLETS = ['លុយសុទ្ធ (Cash)', 'ABA Bank', 'ACLEDA Bank', 'ផ្សេងៗ'];
+    const WALLETS = ['លុយសុទ្ធ (Cash)', 'ABA Bank', 'ACLEDA Bank', 'Brasac Bank'];
+
+    // កំណត់ពណ៌សញ្ញាផ្សេងៗគ្នាសម្រាប់ប្រភេទនីមួយៗ
+    const getCategoryColor = (cat) => {
+      switch(cat) {
+        case 'ម្ហូបអាហារ': return 'bg-amber-500';
+        case 'ធ្វើដំណើរ/ថ្លៃសាំង': return 'bg-blue-500';
+        case 'ការកម្សាន្ត': return 'bg-purple-500';
+        case 'ការសិក្សា': return 'bg-emerald-500';
+        case 'ទិញអីវ៉ាន់/សម្ភារៈ': return 'bg-pink-500';
+        case 'ផ្ទះ/ទឹកភ្លើង': return 'bg-indigo-500';
+        case 'សុខភាព': return 'bg-teal-500';
+        default: return 'bg-rose-500';
+      }
+    };
 
     const triggerHaptic = () => {
       if (navigator.vibrate) {
@@ -126,7 +139,7 @@
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem('dark_mode') === 'true');
       
       const [transactions, setTransactions] = useState(() => {
-        const local = localStorage.getItem('local_transactions');
+        const local = localStorage.getItem('local_transactions_expense');
         return local ? JSON.parse(local) : [];
       });
 
@@ -171,7 +184,6 @@
       const [title, setTitle] = useState('');
       const [amount, setAmount] = useState('');
       const [formCurrency, setFormCurrency] = useState('USD');
-      const [type, setType] = useState('expense');
       const [category, setCategory] = useState(CATEGORIES[0]);
       const [wallet, setWallet] = useState(WALLETS[0]);
       const [receiptImage, setReceiptImage] = useState(null);
@@ -182,7 +194,7 @@
       const chartInstance = useRef(null);
       const fileInputRef = useRef(null);
 
-      useEffect(() => { localStorage.setItem('local_transactions', JSON.stringify(transactions)); }, [transactions]);
+      useEffect(() => { localStorage.setItem('local_transactions_expense', JSON.stringify(transactions)); }, [transactions]);
       useEffect(() => { localStorage.setItem('category_budgets', JSON.stringify(categoryBudgets)); }, [categoryBudgets]);
       useEffect(() => { localStorage.setItem('savings_goals', JSON.stringify(savingsGoals)); }, [savingsGoals]);
       useEffect(() => { localStorage.setItem('bill_reminders', JSON.stringify(reminders)); }, [reminders]);
@@ -249,7 +261,7 @@
           window.crypto.getRandomValues(challenge);
           const publicKey = {
             challenge: challenge,
-            rp: { name: "Finance Pro App" },
+            rp: { name: "Finance Expense App" },
             user: {
               id: Uint8Array.from("FinanceUser", c => c.charCodeAt(0)),
               name: "user@finance.com",
@@ -327,7 +339,7 @@
           title,
           amount: parseFloat(finalAmount.toFixed(2)),
           currency: formCurrency,
-          type,
+          type: 'expense',
           category,
           wallet,
           receipt: receiptImage,
@@ -419,7 +431,7 @@
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `finance_backup_${new Date().toISOString().split('T')[0]}.json`);
+        downloadAnchor.setAttribute("download", `expense_backup_${new Date().toISOString().split('T')[0]}.json`);
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
@@ -465,25 +477,17 @@
         return true;
       });
 
-      const totalIncomeUSD = dateFilteredTransactions.filter(t => t.type === 'income' && (!t.currency || t.currency === 'USD')).reduce((a, c) => a + c.amount, 0);
-      const totalExpenseUSD = dateFilteredTransactions.filter(t => t.type === 'expense' && (!t.currency || t.currency === 'USD')).reduce((a, c) => a + c.amount, 0);
-      const balanceUSD = totalIncomeUSD - totalExpenseUSD;
-
-      const totalIncomeKHR = dateFilteredTransactions.filter(t => t.type === 'income' && t.currency === 'KHR').reduce((a, c) => a + c.amount, 0);
-      const totalExpenseKHR = dateFilteredTransactions.filter(t => t.type === 'expense' && t.currency === 'KHR').reduce((a, c) => a + c.amount, 0);
-      const balanceKHR = totalIncomeKHR - totalExpenseKHR;
+      const totalExpenseUSD = dateFilteredTransactions.filter(t => !t.currency || t.currency === 'USD').reduce((a, c) => a + c.amount, 0);
+      const totalExpenseKHR = dateFilteredTransactions.filter(t => t.currency === 'KHR').reduce((a, c) => a + c.amount, 0);
 
       const walletBalances = WALLETS.map(w => {
-        const wIncomeUSD = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.type === 'income' && (!t.currency || t.currency === 'USD')).reduce((a, c) => a + c.amount, 0);
-        const wExpenseUSD = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.type === 'expense' && (!t.currency || t.currency === 'USD')).reduce((a, c) => a + c.amount, 0);
-        
-        const wIncomeKHR = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.type === 'income' && t.currency === 'KHR').reduce((a, c) => a + c.amount, 0);
-        const wExpenseKHR = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.type === 'expense' && t.currency === 'KHR').reduce((a, c) => a + c.amount, 0);
+        const wExpenseUSD = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && (!t.currency || t.currency === 'USD')).reduce((a, c) => a + c.amount, 0);
+        const wExpenseKHR = transactions.filter(t => (t.wallet || 'លុយសុទ្ធ (Cash)') === w && t.currency === 'KHR').reduce((a, c) => a + c.amount, 0);
 
         return { 
           name: w, 
-          balanceUSD: wIncomeUSD - wExpenseUSD, 
-          balanceKHR: wIncomeKHR - wExpenseKHR 
+          balanceUSD: wExpenseUSD, 
+          balanceKHR: wExpenseKHR 
         };
       });
 
@@ -499,13 +503,13 @@
         triggerHaptic();
         let csv = "ID,Title,Amount,Currency,Type,Category,Wallet,Date\n";
         dateFilteredTransactions.forEach(t => {
-          csv += `"${t.id}","${t.title}","${t.amount}","${t.currency || 'USD'}","${t.type}","${t.category}","${t.wallet || 'លុយសុទ្ធ'}","${t.date}"\n`;
+          csv += `"${t.id}","${t.title}","${t.amount}","${t.currency || 'USD'}","expense","${t.category}","${t.wallet || 'លុយសុទ្ធ'}","${t.date}"\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Financial_Report_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `Expense_Report_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
       };
 
@@ -513,7 +517,7 @@
 
       useEffect(() => {
         if (activeTab !== 'analytics' || !chartRef.current) return;
-        const expenses = dateFilteredTransactions.filter(t => t.type === 'expense' && (!t.currency || t.currency === 'USD'));
+        const expenses = dateFilteredTransactions.filter(t => !t.currency || t.currency === 'USD');
         const categories = {};
         expenses.forEach(t => { categories[t.category] = (categories[t.category] || 0) + t.amount; });
 
@@ -526,7 +530,7 @@
             labels: Object.keys(categories).length ? Object.keys(categories) : ['គ្មានទិន្នន័យ'],
             datasets: [{
               data: Object.values(categories).length ? Object.values(categories) : [1],
-              backgroundColor: ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#64748B', '#06B6D4', '#84CC16']
+              backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#64748B', '#06B6D4', '#F97316']
             }]
           },
           options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
@@ -545,7 +549,7 @@
           e('div', { class: "w-40 h-40 rounded-2xl overflow-hidden shadow-2xl border border-slate-700 flex items-center justify-center animate-pulse" },
             e('img', { src: "https://lh3.googleusercontent.com/d/1yak4qUpNBbl-RFSSSd5ra8hz_Ladgztc", alt: "Splash Logo", class: "w-full h-full object-cover" })
           ),
-          e('p', { class: "text-slate-400 text-sm mt-4 font-medium tracking-wide" }, "MY-FINANCE-PRO")
+          e('p', { class: "text-slate-400 text-sm mt-4 font-medium tracking-wide" }, "MY-EXPENSE-PRO")
         );
       }
 
@@ -591,11 +595,12 @@
                 onScroll: handleScrollSlider,
                 class: "flex overflow-x-auto snap-x-mandatory no-scrollbar rounded-3xl shadow-xl scroll-smooth" 
               },
-                e('div', { class: "min-w-full snap-center bg-gradient-to-br from-[#0F172A] via-[#1E1B4B] to-[#311042] text-white p-5 flex-shrink-0 space-y-4 rounded-3xl" },
+                // Card 1: ពណ៌ខៀវដិត (Gradient Blue/Indigo)
+                e('div', { class: "min-w-full snap-center bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 text-white p-5 flex-shrink-0 space-y-4 rounded-3xl" },
                   e('div', { class: "flex justify-between items-center" },
                     e('div', { class: "flex items-center gap-1.5 text-xs text-slate-300" },
                       e('i', { 'data-lucide': "shield-check", class: "w-4 h-4 text-blue-400" }),
-                      e('span', null, "សមតុល្យសរុប (USD)")
+                      e('span', null, "ចំណាយសរុប (USD)")
                     ),
                     e('div', { class: "flex items-center gap-2" },
                       e('select', {
@@ -611,36 +616,17 @@
                     )
                   ),
                   e('div', null,
-                    e('h2', { class: "text-3xl font-extrabold tracking-tight mt-1" }, '$' + balanceUSD.toFixed(2)),
-                    e('p', { class: "text-xs text-slate-400 mt-0.5" }, "អូសទៅស្តាំដើម្បីមើលប្រាក់រៀល(KHR)")
-                  ),
-                  e('div', { class: "grid grid-cols-2 gap-3 pt-3 border-t border-white/10" },
-                    e('div', { class: "bg-white/5 p-3 rounded-2xl flex items-center gap-2.5 border border-white/5" },
-                      e('div', { class: "p-2 bg-emerald-500/20 text-emerald-400 rounded-xl" },
-                        e('i', { 'data-lucide': "arrow-down-left", class: "w-4 h-4" })
-                      ),
-                      e('div', null,
-                        e('p', { class: "text-[10px] text-slate-400" }, "ចំណូលសរុប"),
-                        e('p', { class: "text-sm font-bold text-emerald-400" }, "+$" + totalIncomeUSD.toFixed(2))
-                      )
-                    ),
-                    e('div', { class: "bg-white/5 p-3 rounded-2xl flex items-center gap-2.5 border border-white/5" },
-                      e('div', { class: "p-2 bg-rose-500/20 text-rose-400 rounded-xl" },
-                        e('i', { 'data-lucide': "arrow-up-right", class: "w-4 h-4" })
-                      ),
-                      e('div', null,
-                        e('p', { class: "text-[10px] text-slate-400" }, "ចំណាយសរុប"),
-                        e('p', { class: "text-sm font-bold text-rose-400" }, "-$" + totalExpenseUSD.toFixed(2))
-                      )
-                    )
+                    e('h2', { class: "text-3xl font-extrabold tracking-tight mt-1 text-blue-300" }, '$' + totalExpenseUSD.toFixed(2)),
+                    e('p', { class: "text-xs text-slate-400 mt-0.5" }, "អូសទៅស្តាំដើម្បីមើលការចំណាយជាប្រាក់រៀល(KHR)")
                   )
                 ),
 
-                e('div', { class: "min-w-full snap-center bg-gradient-to-br from-[#1E293B] via-[#0F172A] to-[#042F2E] text-white p-5 flex-shrink-0 space-y-4 rounded-3xl" },
+                // Card 2: ពណ៌បៃតងទាក់ទាញ (Gradient Teal/Emerald)
+                e('div', { class: "min-w-full snap-center bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 text-white p-5 flex-shrink-0 space-y-4 rounded-3xl" },
                   e('div', { class: "flex justify-between items-center" },
                     e('div', { class: "flex items-center gap-1.5 text-xs text-slate-300" },
                       e('i', { 'data-lucide': "coins", class: "w-4 h-4 text-emerald-400" }),
-                      e('span', null, "សមតុល្យសរុប (KHR)")
+                      e('span', null, "ចំណាយសរុប (KHR)")
                     ),
                     e('div', { class: "flex items-center gap-2" },
                       e('select', {
@@ -656,28 +642,8 @@
                     )
                   ),
                   e('div', null,
-                    e('h2', { class: "text-3xl font-extrabold tracking-tight mt-1" }, balanceKHR.toLocaleString('km-KH') + ' ៛'),
-                    e('p', { class: "text-xs text-slate-400 mt-0.5" }, "ទិន្នន័យប្រាក់រៀលសុទ្ធសាធ")
-                  ),
-                  e('div', { class: "grid grid-cols-2 gap-3 pt-3 border-t border-white/10" },
-                    e('div', { class: "bg-white/5 p-3 rounded-2xl flex items-center gap-2.5 border border-white/5" },
-                      e('div', { class: "p-2 bg-emerald-500/20 text-emerald-400 rounded-xl" },
-                        e('i', { 'data-lucide': "arrow-down-left", class: "w-4 h-4" })
-                      ),
-                      e('div', null,
-                        e('p', { class: "text-[10px] text-slate-400" }, "ចំណូលសរុប"),
-                        e('p', { class: "text-xs font-bold text-emerald-400 truncate" }, "+" + totalIncomeKHR.toLocaleString('km-KH') + ' ៛')
-                      )
-                    ),
-                    e('div', { class: "bg-white/5 p-3 rounded-2xl flex items-center gap-2.5 border border-white/5" },
-                      e('div', { class: "p-2 bg-rose-500/20 text-rose-400 rounded-xl" },
-                        e('i', { 'data-lucide': "arrow-up-right", class: "w-4 h-4" })
-                      ),
-                      e('div', { class: "text-xs" },
-                        e('p', { class: "text-[10px] text-slate-400" }, "ចំណាយសរុប"),
-                        e('p', { class: "text-xs font-bold text-rose-400 truncate" }, "-" + totalExpenseKHR.toLocaleString('km-KH') + ' ៛')
-                      )
-                    )
+                    e('h2', { class: "text-3xl font-extrabold tracking-tight mt-1 text-emerald-300" }, totalExpenseKHR.toLocaleString('km-KH') + ' ៛'),
+                    e('p', { class: "text-xs text-slate-400 mt-0.5" }, "ទិន្នន័យចំណាយប្រាក់រៀលសុទ្ធសាធ")
                   )
                 )
               ),
@@ -688,20 +654,20 @@
                     setActiveCurrencyIndex(0);
                     currencySliderRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
                   },
-                  class: `h-1.5 rounded-full transition-all duration-300 ${activeCurrencyIndex === 0 ? 'w-6 bg-blue-600' : 'w-1.5 bg-slate-300 dark:bg-slate-700'}`
+                  class: `h-1.5 rounded-full transition-all duration-300 ${activeCurrencyIndex === 0 ? 'w-6 bg-blue-500' : 'w-1.5 bg-slate-300 dark:bg-slate-700'}`
                 }),
                 e('button', {
                   onClick: () => {
                     setActiveCurrencyIndex(1);
                     currencySliderRef.current?.scrollTo({ left: currencySliderRef.current.clientWidth, behavior: 'smooth' });
                   },
-                  class: `h-1.5 rounded-full transition-all duration-300 ${activeCurrencyIndex === 1 ? 'w-6 bg-emerald-600' : 'w-1.5 bg-slate-300 dark:bg-slate-700'}`
+                  class: `h-1.5 rounded-full transition-all duration-300 ${activeCurrencyIndex === 1 ? 'w-6 bg-emerald-500' : 'w-1.5 bg-slate-300 dark:bg-slate-700'}`
                 })
               )
             ),
 
             e('div', null,
-              e('h3', { class: "text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider" }, "កាតាបប្រាក់របស់អ្នក"),
+              e('h3', { class: "text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider" }, "ការចំណាយតាមកាតាប"),
               e('div', { class: "flex gap-3 overflow-x-auto no-scrollbar pb-1" },
                 walletBalances.map((w, idx) =>
                   e('div', { key: idx, class: "min-w-[150px] bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex-shrink-0 shadow-sm space-y-1" },
@@ -718,7 +684,7 @@
                 e('i', { 'data-lucide': "search", class: "w-4 h-4 absolute left-3.5 top-3 text-slate-400" }),
                 e('input', {
                   type: "text",
-                  placeholder: "ស្វែងរកប្រវត្តិប្រតិបត្តិការ...",
+                  placeholder: "ស្វែងរកប្រវត្តិចំណាយ...",
                   value: search,
                   onChange: (ev) => setSearch(ev.target.value),
                   class: "w-full bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-2xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
@@ -737,19 +703,20 @@
 
             e('div', { class: "space-y-2" },
               e('div', { class: "flex justify-between items-center" },
-                e('h3', { class: "text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" }, "ប្រវត្តិប្រតិបត្តិការ"),
+                e('h3', { class: "text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" }, "ប្រវត្តិការចំណាយ"),
                 e('span', { class: "text-xs text-slate-400 font-medium" }, `${finalDisplayTransactions.length} ប្រតិបត្តិការ`)
               ),
               finalDisplayTransactions.length === 0 ? 
                 e('div', { class: "text-center py-8 text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700" },
                   e('i', { 'data-lucide': "inbox", class: "w-8 h-8 mx-auto mb-2 opacity-50" }),
-                  e('p', { class: "text-xs" }, "មិនទាន់មានទិន្នន័យឡើយ")
+                  e('p', { class: "text-xs" }, "មិនទាន់មានទិន្នន័យចំណាយឡើយ")
                 ) :
                 finalDisplayTransactions.map(t =>
                   e('div', { key: t.id, class: "bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex justify-between items-center shadow-sm hover:border-slate-300 transition" },
                     e('div', { class: "flex items-center gap-3" },
-                      e('div', { class: `w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${t.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}` },
-                        e('i', { 'data-lucide': t.type === 'income' ? 'arrow-down-left' : 'arrow-up-right', class: "w-5 h-5" })
+                      // កន្លែងបង្ហាញរូបតំណាងពណ៌ផ្សេងៗគ្នាទៅតាមប្រភេទចំណាយ (Category Color)
+                      e('div', { class: `w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${getCategoryColor(t.category)}` },
+                        e('i', { 'data-lucide': "arrow-up-right", class: "w-5 h-5" })
                       ),
                       e('div', null,
                         e('div', { class: "flex items-center gap-1.5" },
@@ -769,8 +736,8 @@
                       )
                     ),
                     e('div', { class: "text-right flex items-center gap-3" },
-                      e('span', { class: `font-bold text-sm ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}` },
-                        (t.type === 'income' ? '+' : '-') + formatTransactionMoney(t)
+                      e('span', { class: "font-bold text-sm text-amber-600 dark:text-amber-400" },
+                        '-' + formatTransactionMoney(t)
                       ),
                       e('button', {
                         onClick: () => handleDelete(t.id),
@@ -797,7 +764,7 @@
               e('div', { class: "space-y-3 pt-2" },
                 CATEGORIES.slice(0, 4).map(cat => {
                   const catSpent = dateFilteredTransactions
-                    .filter(t => t.type === 'expense' && (!t.currency || t.currency === 'USD') && t.category === cat)
+                    .filter(t => (!t.currency || t.currency === 'USD') && t.category === cat)
                     .reduce((a, c) => a + c.amount, 0);
                   const limit = categoryBudgets[cat] || 100;
                   const pct = Math.min((catSpent / limit) * 100, 100);
@@ -1064,26 +1031,14 @@
         showForm && e('div', { class: "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" },
           e('div', { class: "bg-white dark:bg-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl" },
             e('div', { class: "flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3" },
-              e('h3', { class: "font-bold text-base text-slate-800 dark:text-slate-100" }, "បន្ថែមប្រតិបត្តិការ"),
+              e('h3', { class: "font-bold text-base text-slate-800 dark:text-slate-100" }, "បន្ថែមការចំណាយ"),
               e('button', { onClick: () => setShowForm(false), class: "text-slate-400 hover:text-slate-600 btn-act" },
                 e('i', { 'data-lucide': "x", class: "w-5 h-5" })
               )
             ),
             e('form', { onSubmit: handleAddTransaction, class: "space-y-4" },
-              e('div', { class: "flex bg-slate-100 dark:bg-slate-700 p-1 rounded-2xl text-xs font-bold" },
-                e('button', {
-                  type: "button",
-                  onClick: () => { triggerHaptic(); setType('expense'); },
-                  class: `flex-1 py-2.5 rounded-xl transition btn-act ${type === 'expense' ? 'bg-rose-500 text-white shadow' : 'text-slate-500'}`
-                }, "ចំណាយ"),
-                e('button', {
-                  type: "button",
-                  onClick: () => { triggerHaptic(); setType('income'); },
-                  class: `flex-1 py-2.5 rounded-xl transition btn-act ${type === 'income' ? 'bg-emerald-500 text-white shadow' : 'text-slate-500'}`
-                }, "ចំណូល")
-              ),
               e('div', null,
-                e('label', { class: "block text-xs font-semibold text-slate-500 mb-1" }, "បរិយាយ / ឈ្មោះប្រតិបត្តិការ"),
+                e('label', { class: "block text-xs font-semibold text-slate-500 mb-1" }, "បរិយាយ / ឈ្មោះការចំណាយ"),
                 e('input', {
                   type: "text",
                   required: true,
@@ -1093,7 +1048,6 @@
                   class: "w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 })
               ),
-              // កែសម្រួលកន្លែងនេះ៖ បំបែក Grid ឱ្យដាច់ពីគ្នាដើម្បីកុំឱ្យប៉ះទង្គិចកូអរដោនេនៅលើទូរស័ព្ទ
               e('div', { class: "flex gap-2" },
                 e('div', { class: "flex-1" },
                   e('label', { class: "block text-xs font-semibold text-slate-500 mb-1" }, "ចំនួនទឹកប្រាក់"),
@@ -1153,7 +1107,7 @@
                 type: "submit",
                 disabled: loading,
                 class: "w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg flex items-center justify-center gap-2 btn-act"
-              }, loading ? e('i', { 'data-lucide': "refresh-cw", class: "w-5 h-5 animate-spin" }) : e('span', null, "រក្សាទុកទិន្នន័យ"))
+              }, loading ? e('i', { 'data-lucide': "refresh-cw", class: "w-5 h-5 animate-spin" }) : e('span', null, "រក្សាទុកការចំណាយ"))
             )
           )
         ),
