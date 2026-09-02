@@ -83,7 +83,6 @@
       scroll-snap-align: center;
     }
 
-    /* Animation ស្លាយឡើងពីក្រោមមកលើ */
     @keyframes slideUp {
       from {
         transform: translateY(100%);
@@ -167,9 +166,22 @@
           { id: 1, title: 'ថ្លៃអ៊ីនធឺណិត', amount: 25, dueDate: '2026-03-05', category: 'ផ្ទះ/ទឹកភ្លើង' }
         ];
       });
+
+      const [recurringExpenses, setRecurringExpenses] = useState(() => {
+        const local = localStorage.getItem('recurring_expenses');
+        return local ? JSON.parse(local) : [
+          { id: 1, title: 'ថ្លៃ thuêផ្ទះ', amount: 150, category: 'ផ្ទះ/ទឹកភ្លើង', wallet: WALLETS[1], day: '1' }
+        ];
+      });
+
       const [billTitle, setBillTitle] = useState('');
       const [billAmount, setBillAmount] = useState('');
       const [billDueDate, setBillDueDate] = useState('');
+
+      const [recTitle, setRecTitle] = useState('');
+      const [recAmount, setRecAmount] = useState('');
+      const [recCategory, setRecCategory] = useState(CATEGORIES[0]);
+      const [recDay, setRecDay] = useState('1');
 
       const [loading, setLoading] = useState(false);
       const [syncing, setSyncing] = useState(false);
@@ -197,6 +209,7 @@
       useEffect(() => { localStorage.setItem('local_transactions_expense', JSON.stringify(transactions)); }, [transactions]);
       useEffect(() => { localStorage.setItem('category_budgets', JSON.stringify(categoryBudgets)); }, [categoryBudgets]);
       useEffect(() => { localStorage.setItem('bill_reminders', JSON.stringify(reminders)); }, [reminders]);
+      useEffect(() => { localStorage.setItem('recurring_expenses', JSON.stringify(recurringExpenses)); }, [recurringExpenses]);
 
       useEffect(() => {
         if (darkMode) document.documentElement.classList.add('dark');
@@ -224,7 +237,7 @@
         if (window.lucide && !showSplash) {
           setTimeout(() => window.lucide.createIcons(), 30);
         }
-      }, [transactions, showForm, activeTab, activeCurrencyIndex, selectedCategoryFilter, timeFilter, syncing, isLocked, darkMode, showSplash, isBiometricEnabled, selectedReceipt, reminders, categoryBudgets]);
+      }, [transactions, showForm, activeTab, activeCurrencyIndex, selectedCategoryFilter, timeFilter, syncing, isLocked, darkMode, showSplash, isBiometricEnabled, selectedReceipt, reminders, recurringExpenses, categoryBudgets]);
 
       const handleScrollSlider = (e) => {
         const scrollLeft = e.target.scrollLeft;
@@ -366,7 +379,7 @@
         }
       };
 
-      const handleAddBill = (ev) => {
+      const AddBill = (ev) => {
         ev.preventDefault();
         if (!billTitle || !billAmount || !billDueDate) return;
         const newBill = { id: Date.now(), title: billTitle, amount: parseFloat(billAmount), dueDate: billDueDate, category: 'ផ្ទះ/ទឹកភ្លើង' };
@@ -389,6 +402,23 @@
         setTransactions([newTx, ...transactions]);
         setReminders(reminders.filter(r => r.id !== bill.id));
         alert(`បានទូទាត់ «${bill.title}» រួចរាល់!`);
+      };
+
+      const handleAddRecurring = (ev) => {
+        ev.preventDefault();
+        triggerHaptic();
+        if (!recTitle || !recAmount) return;
+        const newRec = {
+          id: Date.now(),
+          title: recTitle,
+          amount: parseFloat(recAmount),
+          category: recCategory,
+          wallet: WALLETS[0],
+          day: recDay
+        };
+        setRecurringExpenses([...recurringExpenses, newRec]);
+        setRecTitle(''); setRecAmount('');
+        alert('បានបន្ថែមការចំណាយប្រចាំខែស្វ័យប្រវត្តិជោគជ័យ!');
       };
 
       const handleExportJSON = () => {
@@ -754,6 +784,22 @@
           ),
 
           activeTab === 'features' && e('div', { class: "space-y-4" },
+            
+            // ១. ការវិភាគការចំណាយឆ្លាតវៃ (Smart Insights)
+            e('div', { class: "bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-2" },
+              e('h3', { class: "font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2" },
+                e('i', { 'data-lucide': "brain", class: "w-4 h-4 text-purple-500" }),
+                "ការវិភាគការចំណាយឆ្លាតវៃ (Insights)"
+              ),
+              e('div', { class: "p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-100 dark:border-purple-800/30 text-xs text-purple-700 dark:text-purple-300 space-y-1" },
+                e('p', { class: "font-semibold" }, "💡 ការផ្ដល់យោបល់ប្រចាំខែ៖"),
+                e('p', null, totalExpenseUSD > 200 ? "ចំណាយរបស់អ្នកខែនេះហាក់មានលក្ខណៈខ្ពស់ សូមពិនិត្យមើលប្រភេទម្ហូបអាហារ និងការទិញទំនិញបន្ថែម។" : "ការគ្រប់គ្រងទឹកប្រាក់ចំណាយរបស់អ្នកខែនេះស្ថិតក្នុងកម្រិតល្អប្រសើរ!")
+              )
+            ),
+
+            // ២. ការចំណាយដដែលៗប្រចាំខែ (Recurring Expenses)
+            
+            // ៣. រំលឹកបង់ប្រាក់ប្រចាំខែ (Bill Reminders)
             e('div', { class: "bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-3" },
               e('h3', { class: "font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2" },
                 e('i', { 'data-lucide': "bell", class: "w-4 h-4 text-amber-500" }),
@@ -908,7 +954,6 @@
           )
         ),
 
-        /* កែប្រែត្រង់នេះ៖ បន្ថែម pb-safe និង animate-slide-up ដើម្បីកុំឱ្យបាំង Home Bar និងស្លាយឡើងពីក្រោម */
         showForm && e('div', { class: "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-50 p-0" },
           e('div', { class: "bg-white dark:bg-slate-800 w-full max-w-md rounded-t-3xl p-5 pb-safe space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up" },
             e('div', { class: "flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3" },
