@@ -82,6 +82,21 @@
     .snap-center {
       scroll-snap-align: center;
     }
+
+    /* Animation ស្លាយឡើងពីក្រោមមកលើ */
+    @keyframes slideUp {
+      from {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    .animate-slide-up {
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
   </style>
 </head>
 <body class="bg-[#F8FAFC] dark:bg-slate-900 font-sans h-screen text-slate-800 dark:text-slate-100 transition-colors duration-200 overflow-hidden">
@@ -172,7 +187,6 @@
       const [formCurrency, setFormCurrency] = useState('USD');
       const [category, setCategory] = useState(CATEGORIES[0]);
       const [wallet, setWallet] = useState(WALLETS[0]);
-      const [receiptImage, setReceiptImage] = useState(null);
       const [selectedReceipt, setSelectedReceipt] = useState(null);
       const [showForm, setShowForm] = useState(false);
 
@@ -302,15 +316,6 @@
         }
       };
 
-      const handleImageUpload = (ev) => {
-        const file = ev.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => setReceiptImage(reader.result);
-          reader.readAsDataURL(file);
-        }
-      };
-
       const handleAddTransaction = async (ev) => {
         ev.preventDefault();
         triggerHaptic();
@@ -327,7 +332,6 @@
           type: 'expense',
           category,
           wallet,
-          receipt: receiptImage,
           date: new Date().toISOString().split('T')[0]
         };
 
@@ -344,7 +348,7 @@
           } catch (err) { console.error("Save Error:", err); }
         }
 
-        setTitle(''); setAmount(''); setReceiptImage(null); setShowForm(false); setLoading(false);
+        setTitle(''); setAmount(''); setShowForm(false); setLoading(false);
       };
 
       const handleDelete = async (id) => {
@@ -556,7 +560,6 @@
                 onScroll: handleScrollSlider,
                 class: "flex overflow-x-auto snap-x-mandatory no-scrollbar rounded-3xl shadow-xl scroll-smooth" 
               },
-                // Card 1: ពណ៌ខៀវដិត (កាតដុល្លារ បង្ហាញតែដុល្លារ) - កែតម្រូវកាតាបឱ្យតូចល្មមតាមកាត (fit-content/inline-flex)
                 e('div', { class: "min-w-full snap-center bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 text-white p-5 flex-shrink-0 space-y-4 rounded-3xl" },
                   e('div', { class: "flex justify-between items-center" },
                     e('div', { class: "flex items-center gap-1.5 text-xs text-slate-300" },
@@ -593,7 +596,6 @@
                   )
                 ),
 
-                // Card 2: ពណ៌បៃតងទាក់ទាញ (កាតរៀល បង្ហាញតែលុយខ្មែរ KHR) - កែតម្រូវកាតាបឱ្យតូចល្មមតាមកាត
                 e('div', { class: "min-w-full snap-center bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 text-white p-5 flex-shrink-0 space-y-4 rounded-3xl" },
                   e('div', { class: "flex justify-between items-center" },
                     e('div', { class: "flex items-center gap-1.5 text-xs text-slate-300" },
@@ -683,29 +685,23 @@
                 ) :
                 finalDisplayTransactions.map(t =>
                   e('div', { key: t.id, class: "bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 flex justify-between items-center shadow-sm hover:border-slate-300 transition" },
-                    e('div', { class: "flex items-center gap-3" },
-                      e('div', { class: `w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${getCategoryColor(t.category)}` },
+                    e('div', { class: "flex items-center gap-3 overflow-hidden pr-2" },
+                      e('div', { class: `w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-white shadow-sm ${getCategoryColor(t.category)}` },
                         e('i', { 'data-lucide': "arrow-up-right", class: "w-5 h-5" })
                       ),
-                      e('div', null,
-                        e('div', { class: "flex items-center gap-1.5" },
-                          e('h4', { class: "font-semibold text-sm text-slate-800 dark:text-slate-100" }, t.title),
-                          t.receipt && e('button', {
-                            onClick: () => setSelectedReceipt(t.receipt),
-                            class: "text-blue-500 hover:text-blue-600 btn-act"
-                          }, e('i', { 'data-lucide': "image", class: "w-3.5 h-3.5" }))
-                        ),
-                        e('div', { class: "flex items-center gap-2 text-[11px] text-slate-400 mt-0.5" },
-                          e('span', null, t.category),
+                      e('div', { class: "min-w-0" },
+                        e('h4', { class: "font-semibold text-sm text-slate-800 dark:text-slate-100 truncate" }, t.title),
+                        e('div', { class: "flex items-center gap-1.5 text-[11px] text-slate-400 mt-0.5 whitespace-nowrap overflow-hidden" },
+                          e('span', { class: "truncate" }, t.category),
                           e('span', null, "•"),
-                          e('span', null, t.wallet || 'Cash'),
+                          e('span', { class: "truncate" }, t.wallet || 'Cash'),
                           e('span', null, "•"),
-                          e('span', null, t.date)
+                          e('span', { class: "flex-shrink-0" }, t.date)
                         )
                       )
                     ),
-                    e('div', { class: "text-right flex items-center gap-3" },
-                      e('span', { class: "font-bold text-sm text-amber-600 dark:text-amber-400" },
+                    e('div', { class: "text-right flex items-center gap-2 flex-shrink-0" },
+                      e('span', { class: "font-bold text-sm text-amber-600 dark:text-amber-400 whitespace-nowrap" },
                         '-' + formatTransactionMoney(t)
                       ),
                       e('button', {
@@ -763,7 +759,7 @@
                 e('i', { 'data-lucide': "bell", class: "w-4 h-4 text-amber-500" }),
                 "រំលឹកបង់ប្រាក់ប្រចាំខែ (Bill Reminders)"
               ),
-              e('form', { onSubmit: handleAddBill, class: "grid grid-cols-2 gap-2" },
+              e('form', { onSubmit: AddBill, class: "grid grid-cols-2 gap-2" },
                 e('input', {
                   type: "text",
                   placeholder: "ឈ្មោះវិក្កយបត្រ",
@@ -912,8 +908,9 @@
           )
         ),
 
-        showForm && e('div', { class: "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" },
-          e('div', { class: "bg-white dark:bg-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl" },
+        /* កែប្រែត្រង់នេះ៖ បន្ថែម pb-safe និង animate-slide-up ដើម្បីកុំឱ្យបាំង Home Bar និងស្លាយឡើងពីក្រោម */
+        showForm && e('div', { class: "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-50 p-0" },
+          e('div', { class: "bg-white dark:bg-slate-800 w-full max-w-md rounded-t-3xl p-5 pb-safe space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up" },
             e('div', { class: "flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3" },
               e('h3', { class: "font-bold text-base text-slate-800 dark:text-slate-100" }, "បន្ថែមការចំណាយ"),
               e('button', { onClick: () => setShowForm(false), class: "text-slate-400 hover:text-slate-600 btn-act" },
@@ -975,22 +972,10 @@
                   }, WALLETS.map((w, i) => e('option', { key: i, value: w }, w)))
                 )
               ),
-              e('div', null,
-                e('label', { class: "block text-xs font-semibold text-slate-500 mb-1" }, "ភ្ជាប់រូបថតវិក្កយបត្រ"),
-                e('input', {
-                  type: "file",
-                  accept: "image/*",
-                  onChange: handleImageUpload,
-                  class: "w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 dark:file:bg-slate-700 dark:file:text-slate-200"
-                }),
-                receiptImage && e('div', { class: "mt-2 w-16 h-16 rounded-xl overflow-hidden border border-slate-300" },
-                  e('img', { src: receiptImage, alt: "Receipt Preview", class: "w-full h-full object-cover" })
-                )
-              ),
               e('button', {
                 type: "submit",
                 disabled: loading,
-                class: "w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg flex items-center justify-center gap-2 btn-act"
+                class: "w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg flex items-center justify-center gap-2 btn-act mt-2"
               }, loading ? e('i', { 'data-lucide': "refresh-cw", class: "w-5 h-5 animate-spin" }) : e('span', null, "រក្សាទុកការចំណាយ"))
             )
           )
